@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+     <!-- Веб-манифест для PWA и установки на телефон -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Иконка приложения и настройки полноэкранного режима -->
+    <link rel="icon" type="image/jpeg" href="LogoExpert.jpg">
+    <link rel="apple-touch-icon" href="LogoExpert.jpg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Склад Эксперт">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#5A1017">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Складской учет оборудования</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SheetJS (Excel) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        html, body { 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            margin: 0; 
+            padding: 0; 
+            overscroll-behavior: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        }
+        #root { 
+            width: 100%; 
+            height: 100%; 
+            position: relative; 
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body class="bg-[#F0F2F5] dark:bg-[#101112] text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const Icon = ({ name, size = 24, className = "", strokeWidth = 2, fill = "none", onClick }) => {
+            const spanRef = useRef(null);
+            
+            useEffect(() => {
+                if (spanRef.current && window.lucide) {
+                    spanRef.current.innerHTML = '';
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', name);
+                    i.setAttribute('width', size);
+                    i.setAttribute('height', size);
+                    if (className) i.setAttribute('class', className);
+                    i.setAttribute('stroke-width', strokeWidth);
+                    i.setAttribute('fill', fill);
+                    
+                    spanRef.current.appendChild(i);
+                    window.lucide.createIcons({ root: spanRef.current });
+                }
+            }, [name, size, className, strokeWidth, fill]);
+
+            return <span ref={spanRef} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}></span>;
+        };
+
+        const manufacturers = ['CROW', 'Dahua', 'RITM', 'СИ-НОРД', 'Мы дома', 'Honeywell', 'Прочее', 'АКБ', 'Камеры', 'Избранное', 'Мое'];
+        
+        const initialCatalog = [
+            { id: 'ТМ-5583', name: 'Контрольная панель CROW', price: '15800р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5585', name: 'Клавиатура CROW', price: '6990р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5706', name: 'Датчик открывания двери CROW', price: '4490р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5587', name: 'Датчик движения CROW', price: '4990р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5705', name: 'Датчик движения c камерой CROW', price: '9990р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5593', name: 'Датчик движения "штора" CROW', price: '4990р.', manufacturer: 'CROW', category: 'Базовый комплект' },
+            { id: 'ТМ-5721', name: 'Датчик дыма CROW', price: '5490р.', manufacturer: 'CROW', category: 'Life safety' },
+            { id: 'ТМ-5588', name: 'Датчик протечки CROW', price: '3990р.', manufacturer: 'CROW', category: 'Life safety' },
+            { id: 'КТ-0737', name: 'Датчик утечки газа CROW', price: '8990р.', manufacturer: 'CROW', category: 'Life safety' },
+            { id: 'ТМ-6766', name: 'Датчик температуры CROW', price: '6990р.', manufacturer: 'CROW', category: 'Life safety' },
+            { id: 'ТМ-5725', name: 'Носимая КТС CROW', price: '4990р.', manufacturer: 'CROW', category: 'КТС' },
+            { id: 'КТ-0776', name: 'КТС стационарная (комплект) CROW', price: '4990р.', manufacturer: 'CROW', category: 'КТС' },
+            { id: 'ТМ-5722', name: 'Беспроводной 4-х кнопочный брелок CROW', price: '4990р.', manufacturer: 'CROW', category: 'КТС' },
+            { id: 'ТМ-9650', name: 'Уличный датчик движения с камерой CROW', price: '16490р.', manufacturer: 'CROW', category: 'Улица' },
+            { id: 'ТМ-5596', name: 'Беспроводная сирена (для улицы) CROW', price: '11990р.', manufacturer: 'CROW', category: 'Улица' },
+            { id: 'КТ-0699', name: 'Комплект уличный датчик + сирена (-10%) CROW', price: '20500р.', manufacturer: 'CROW', category: 'Улица' },
+            { id: 'ТМ-5586', name: 'Бесконтактный ключ CROW', price: '290р.', manufacturer: 'CROW', category: 'Разное' },
+            { id: 'ТМ-2741', name: 'Беспроводной репитер CROW', price: '5490р.', manufacturer: 'CROW', category: 'Разное' },
+            { id: 'ТМ-6089', name: 'Гаражный расширитель CROW', price: '6490р.', manufacturer: 'CROW', category: 'Разное' },
+            { id: 'ТМ-5595', name: 'Беспроводная сирена (для помещения) CROW', price: '8490р.', manufacturer: 'CROW', category: 'Разное' },
+            { id: 'ТМ-9744', name: 'Контрольная панель Dahua', price: '15800р.', manufacturer: 'Dahua', category: 'Базовый комплект' },
+            { id: 'ТМ-9748', name: 'Беспроводная клавиатура Dahua', price: '6990р.', manufacturer: 'Dahua', category: 'Базовый комплект' },
+            { id: 'ТМ-9767', name: 'Датчик открывания двери/окна Dahua', price: '4490р.', manufacturer: 'Dahua', category: 'Базовый комплект' },
+            { id: 'ТМ-9805', name: 'Беспроводной датчик движения Dahua', price: '4990р.', manufacturer: 'Dahua', category: 'Базовый комплект' },
+            { id: 'ТМ-2695', name: 'Датчик движения с фотофиксацией Dahua', price: '9990р.', manufacturer: 'Dahua', category: 'Базовый комплект' },
+            { id: 'ТМ-2366', name: 'Датчик дыма Dahua', price: '5490р.', manufacturer: 'Dahua', category: 'Life safety' },
+            { id: 'ТМ-2367', name: 'Датчик протечки воды Dahua', price: '3990р.', manufacturer: 'Dahua', category: 'Life safety' },
+            { id: 'ТМ-9847', name: 'Датчик протечки воды Dahua(выносной)', price: '4490р.', manufacturer: 'Dahua', category: 'Life safety' },
+            { id: 'ТМ-9743', name: 'Носимая КТС Dahua', price: '4490р.', manufacturer: 'Dahua', category: 'КТС' },
+            { id: 'ТМ-9749', name: 'Брелок/Пульт управления Dahua', price: '3490р.', manufacturer: 'Dahua', category: 'КТС' },
+            { id: 'ТМ-2363', name: 'Уличный датчик движения с фотофиксацией Dahua', price: '16490р.', manufacturer: 'Dahua', category: 'Улица' },
+            { id: 'ТМ-9746', name: 'Уличная сирена Dahua', price: '9990р.', manufacturer: 'Dahua', category: 'Улица' },
+            { id: 'ТМ-2359', name: 'Универсальный передатчик Dahua', price: '4490р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-2356', name: 'Ретранслятор Dahua', price: '5990р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-8287', name: 'Ретранслятор Dahua ( ДДФ и УДДФ)', price: '17280р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-9745', name: 'Домашняя сирена Dahua', price: '5490р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-9846', name: 'Ремешок для тревожной кнопки Dahua', price: '200р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-9848', name: 'Настенное крепление для тревожной кнопки Dahua', price: '200р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-4188', name: 'Контр. панель Mega Fire v.4 LTE + радио м. RITM', price: '16700р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-9470', name: 'WI-FI расширитель для Mega Fair RITM', price: '1000р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-6982', name: 'LAN модуль для Mega Fire (под заказ) RITM', price: '3350р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-0976', name: 'Шнур с вилкой RITM', price: '290р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-3972', name: 'Клавиатура RKB1 (большая) RITM', price: '3750р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-4039', name: 'Датчик открывания беспроводной RITM', price: '2500р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-3973', name: 'Датчик движения RITM', price: '2900р.', manufacturer: 'RITM', category: 'Базовый комплект' },
+            { id: 'ТМ-4067', name: 'Беспроводной датчик дыма RITM', price: '3500р.', manufacturer: 'RITM', category: 'Life safety' },
+            { id: 'ТМ-6448', name: 'Датчик протечки RITM', price: '2750р.', manufacturer: 'RITM', category: 'Life safety' },
+            { id: 'КТ-0755', name: 'Датчик утечки газа RITM', price: '7990р.', manufacturer: 'RITM', category: 'Life safety' },
+            { id: 'ТМ-4009', name: 'Радиобрелок RITM', price: '1750р.', manufacturer: 'RITM', category: 'КТС' },
+            { id: 'ТМ-3733', name: 'Беспроводная переносимая кнопка RITM', price: '3400р.', manufacturer: 'RITM', category: 'КТС' },
+            { id: 'ТМ-4504', name: 'Стац. Кнопка ИО101-1 (без передатчика) RITM', price: '1900р.', manufacturer: 'RITM', category: 'КТС' },
+            { id: 'ТМ-0728', name: 'МАЯК для оборудования (Проводной) RITM', price: '1480р.', manufacturer: 'RITM', category: 'Разное' },
+            { id: 'ТМ-4272', name: 'Расширитель беспроводных зон RITM', price: '5900р.', manufacturer: 'RITM', category: 'Разное' },
+            { id: 'ТМ-3850', name: 'Приемник для беспроводной носимой кн. RITM', price: '15700р.', manufacturer: 'RITM', category: 'Разное' },
+            { id: 'ТМ-0943', name: 'Датчик открывания проводной RITM', price: '3500р.', manufacturer: 'RITM', category: 'Разное' },
+            { id: 'ТМ-8021', name: 'Nord Max Air панель', price: '23 790р.', manufacturer: 'СИ-НОРД', category: 'Основное' },
+            { id: 'ТМ-6361', name: 'СН-ИК датчик движения', price: '6 000р.', manufacturer: 'СИ-НОРД', category: 'Основное' },
+            { id: 'ТМ-6362', name: 'СН-СМК датчик открывания', price: '4 700р.', manufacturer: 'СИ-НОРД', category: 'Основное' },
+            { id: 'ТМ-4597', name: 'СН-Дым датчик дыма', price: '5 950р.', manufacturer: 'СИ-НОРД', category: 'Основное' },
+            { id: 'ТМ-6193', name: 'СН-К клавиатура', price: '7 700р.', manufacturer: 'СИ-НОРД', category: 'Основное' },
+            { id: 'ТМ-3940', name: 'Контрольная панель ES8000CP 3G WER', price: '24900р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'ТМ-3944', name: 'Считыватель бесконтактных ключей WER', price: '7000р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'ТМ-6749', name: 'Считыватель ключей с клавиатурой WER', price: '10250р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'КТ-0587', name: 'Датчик открывания двери WER', price: '3500р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'КТ-0586', name: 'Датчик движения WER', price: '3500р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'КТ-0588', name: 'Датчик движения с фото WER', price: '7000р.', manufacturer: 'Мы дома', category: 'Базовый комплект' },
+            { id: 'КТ-0590', name: 'Датчик дыма WER', price: '5000р.', manufacturer: 'Мы дома', category: 'Life safety' },
+            { id: 'КТ-0589', name: 'Датчик протечки WER', price: '4000р.', manufacturer: 'Мы дома', category: 'Life safety' },
+            { id: 'КТ-0593', name: 'Датчик утечки газа WER', price: '7000р.', manufacturer: 'Мы дома', category: 'Life safety' },
+            { id: 'КТ-0585-1', name: 'Носимая КТС WER', price: '3500р.', manufacturer: 'Мы дома', category: 'КТС' },
+            { id: 'КТ-0585-2', name: 'Беспроводной пульт управления с функцией КТС WER', price: '3500р.', manufacturer: 'Мы дома', category: 'КТС' },
+            { id: 'КТ-0591', name: 'Беспроводная сирена WER', price: '2900р.', manufacturer: 'Мы дома', category: 'Разное' },
+            { id: 'ТМ-3942', name: 'Бесконтактный ключ WER', price: '750р.', manufacturer: 'Мы дома', category: 'Разное' },
+            { id: 'б-тм', name: 'Контрольная панель Honeywell', price: '0р', manufacturer: 'Honeywell', category: 'Базовый комплект' },
+            { id: 'ТМ-4497', name: 'Клавиатура Sucre Box Honeywell', price: '7000р', manufacturer: 'Honeywell', category: 'Базовый комплект' },
+            { id: 'ТМ-4375', name: 'Датчик открывания двери Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'Базовый комплект' },
+            { id: 'ТМ-0921', name: 'Датчик движения Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'Базовый комплект' },
+            { id: 'ТМ-4495', name: 'Датчик движения с функцией фото подтверждения (цв.) Honeywell', price: '7000р', manufacturer: 'Honeywell', category: 'Базовый комплект' },
+            { id: 'ТМ-4498', name: 'Датчик дыма Honeywell', price: '5000р', manufacturer: 'Honeywell', category: 'Life safety' },
+            { id: 'КТ-0352', name: 'Датчик протечки Honeywell', price: '4000р', manufacturer: 'Honeywell', category: 'Life safety' },
+            { id: 'КТ-0414', name: 'Датчик утечки газа Honeywell', price: '7000р', manufacturer: 'Honeywell', category: 'Life safety' },
+            { id: 'КТ-0514', name: 'Датчик утечки газа Honeywell (доп)', price: '7000р', manufacturer: 'Honeywell', category: 'Life safety' },
+            { id: 'ТМ-4911', name: 'Умная розетка Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'Life safety' },
+            { id: 'ТМ-0928', name: 'Беспроводной пульт управления с функцией ТС Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'КТС' },
+            { id: 'ТМ-4859', name: 'Беспроводной брелок с 4 кнопками Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'КТС' },
+            { id: 'ТМ-3908', name: 'Носимая КТС Honeywell', price: '3500р', manufacturer: 'Honeywell', category: 'КТС' },
+            { id: 'ТМ-4860', name: 'Беспроводная сирена Honeywell', price: '7500р', manufacturer: 'Honeywell', category: 'Разное' },
+            { id: 'ТМ-5269', name: 'Беспроводной Wi Fi модем Honeywell', price: '3000р', manufacturer: 'Honeywell', category: 'Разное' },
+            { id: 'ТМ-0923', name: 'Бесконтактный ключ Honeywell', price: '750р', manufacturer: 'Honeywell', category: 'Разное' },
+            // Прочее — СИМ-карты
+            { id: 'sim mts', name: 'Сим карта МТС', price: '0р.', manufacturer: 'Прочее', category: 'СИМ-карты' },
+            { id: 'sim beeline', name: 'Сим карта Билайн', price: '0р.', manufacturer: 'Прочее', category: 'СИМ-карты' },
+            { id: 'sim megafon', name: 'Сим карта Мегафон', price: '0р.', manufacturer: 'Прочее', category: 'СИМ-карты' },
+            { id: 'sim tele 2', name: 'Сим карта Теле 2', price: '0р.', manufacturer: 'Прочее', category: 'СИМ-карты' },
+
+            // Прочее — Огнетушители
+            { id: 'ТМ-8055', name: 'Огнетушащее средство 0,6Л', price: '3 490р.', manufacturer: 'Прочее', category: 'Огнетушители' },
+            { id: 'ТМ-6431', name: 'Огнетушитель водно-эмульсионный ОВЭ-2-АВСЕ-01(Н) 1L', price: '6 490р.', manufacturer: 'Прочее', category: 'Огнетушители' },
+            { id: 'ТМ-6026', name: 'Огнетушитель 2Л', price: '10 990р.', manufacturer: 'Прочее', category: 'Огнетушители' },
+
+            // Прочее — Камеры
+            { id: 'ТМ-7904', name: 'Камера внутр 2Мп (МТС)', price: '2 990р.', manufacturer: 'Прочее', category: 'Камеры' },
+            { id: 'ТМ-2755', name: 'Уличная камера Ivideon( под заказ)', price: '6 490р.', manufacturer: 'Прочее', category: 'Камеры' },
+            { id: 'ТМ-8253', name: 'Уличная камера Dahua', price: '6 990р.', manufacturer: 'Прочее', category: 'Камеры' },
+            { id: 'ТМ-7127', name: 'SD карты 32 GB', price: '990р.', manufacturer: 'Прочее', category: 'Камеры' },
+
+            // Прочее — Наклейки
+            { id: 'МАТ-009419', name: 'Наклейка ГОЛЬФСТРИМ (МАЛАЯ) МСК', price: '0р.', manufacturer: 'Прочее', category: 'Наклейки' },
+            { id: 'МАТ-009420', name: 'Наклейка ГОЛЬФСТРИМ (БОЛ) МСК', price: '0р.', manufacturer: 'Прочее', category: 'Наклейки' },
+            { id: 'МАТ-009421', name: 'Табличка КТ ГОЛЬФСТРИМ МСК', price: '0р.', manufacturer: 'Прочее', category: 'Наклейки' },
+
+            // Прочее — Остальное оборудование
+            { id: 'ТМ-6663', name: 'Сейф-бокс', price: '3 490р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0976', name: 'Шнур 3м с вилкой ПВС ВП 3х0,75 мм (белый)', price: '133.64р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-9592', name: 'SKYWAY Кабель usb-type-c в оплетке 2м(для РИТМа)', price: '237.53р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-4504', name: 'ИО 101-1(В) (КНС-1В), изв.охранный руч точ/ТМ-3596', price: '1 900р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-3861', name: 'SmokeSabre 01-001 - аэрозоль д/теста датчика дыма', price: '1 310.58р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ИН-0744', name: 'Скотч-лок 0.5мм для соединения проводов', price: '3.71р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ИН-0830', name: '4910F двус.кл.лента (12мм х 33м) скотч двухсторонний 3M', price: '3 032.07р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0007', name: 'M0941 Изолента ПВХ белая', price: '53.30р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0439', name: 'Маркер Attache 155797 /LEG39598 Viking-3 Черный', price: '121.35р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0709', name: 'Саморез КЛОП белый цинк со СВЕРЛОМ 3,5х11', price: '1.78р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0749', name: '1050060 дюбель 6х30', price: '3.36р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0985', name: 'Наконечник для опресовки провода 0,75мм (серый)', price: '1.69р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-2873', name: 'Патч-корд 1м UTP-5 Cat 5e Suprlan/Компо (серый)', price: '82.07р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-3370', name: '5251202 Шуруп 4.0х25 Pzd оцинк', price: '0.99р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-3497', name: '5240502 Шуруп 3.5х16 Pzd 2', price: '0.63р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-0002', name: 'Элемент питания Energizer CR2430 BL2', price: '280р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0028', name: 'SF/ETALON FS/ DT1207 Аккумулятор 12В 7Ач', price: '1 740р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0163', name: 'DT 12045 Аккумулятор 12В 4,5 А\\ч', price: '1 620р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0173', name: 'DT12012 Аккумулятор 12В 1,2Ач', price: '920р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0328', name: 'Аккум.батарея SAFT LST 17330 3.6V, 2100 mAh', price: '640р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0355', name: 'BAT_MAG_7,2V АКБ для Магеллан (MG-6060) NI', price: '4 800р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0513', name: 'Элемент питания Energizer MAX 6LR61 BL1', price: '410р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0514', name: 'Элемент питания Energizer CR2032 BL1', price: '170р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0518', name: 'Элемент питания типа CR2', price: '470р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0559', name: 'DT 1218 Аккумуляторная батарея (12-17)', price: '4 800р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0573', name: 'DT 1212 Аккумулятор 12В 12Ач', price: '3 780р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-0929', name: 'DOMONIAL - BA04V35/DT 4035 АКБ Домониал', price: '1 050р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3356', name: 'DT 1226 Аккумулятор DT 12-26 Delta', price: '8 220р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3357', name: 'DT 1240 Аккумулятор DT 12-40 Delta', price: '11 880р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3439', name: 'HYUNDAI 4LR61 BL1 элемент питания', price: '280р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3543', name: 'Элемент питания DURACELL MN1300 BL2', price: '380р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3546', name: 'Элемент питания Energizer E23A/MN21 BL 1', price: '230р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3578', name: 'Элемент питания Energizer EL123AP BL1/Varta', price: '640р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3580', name: 'Элемент питания Energizer AA-LR6 BL16', price: '100р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3581', name: 'Элемент питания Energizer CR2450 BL2', price: '270р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3582', name: 'Элемент питания Energizer AAA-LR03 BL16', price: '90р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3794', name: 'Элемент питания SAFT LS 14500 AA/ER-14505 3,6V', price: '1 200р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3927', name: 'DTM 12022 аккум. батарея для контр-х пан. JA-63K', price: '1 500р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-3991', name: 'Аккумулятор Nokia BL-5C (для КП РИТМ)', price: '1 260р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-4022', name: 'ESBT02350 батарейка для панели 7000EG', price: '3 660р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-4023', name: 'ESBT02877 батарейка для панели 6500EGE', price: '2 280р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-4201', name: 'Элемент питания Energizer Ultimate Lithium FR6 BL4', price: '330р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-4796', name: 'Элемент питания ENERGYZER LR14 BL2', price: '220р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-4840', name: 'Элемент питания VARTA 56706 2 Use AA 2100mAh', price: '590р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-5104', name: 'Элем питания HR0 AAA 850 mAh (for Sucre IP)', price: '340р.', manufacturer: 'АКБ', category: 'Основное' },
+            { id: 'ТМ-6219', name: 'CROW АКБ для уличный датчик движения (3811036)', price: '1 740р.', manufacturer: 'АКБ', category: 'Основное' },
+
+            // Камеры
+            { id: 'ТМ-9306', name: 'Уличная цилиндрическая IP-видеокамера 2Мп (DH-IPC-HFW1239TL1P-A-IL-0280B)', price: '4 990р.', manufacturer: 'Камеры', category: 'Видеокамеры' },
+            { id: 'ТМ-9309', name: 'Поворотная мини-PT IP-видеокамера 2Мп (DH-IPC-PT1239HP-PV-0360B)', price: '5 990р.', manufacturer: 'Камеры', category: 'Видеокамеры' },
+            { id: 'ТМ-9305', name: 'Уличная цилиндрическая IP-видеокамера с ИИ 4Мп (DH-IPC-HFW2449TLP-S-PV-0280B)', price: '9 990р.', manufacturer: 'Камеры', category: 'Видеокамеры' },
+
+            { id: 'ТМ-9298', name: '4-канальный IP-видеорегистратор 4K с PoE (DHI-NVR1104HS-P-S3/H)', price: '7 100р.', manufacturer: 'Камеры', category: 'Видеорегистраторы' },
+            { id: 'ТМ-9304', name: '8-канальный IP-видеорегистратор 4K с PoE (DHI-NVR2108HS-8P-4KS3)', price: '15 700р.', manufacturer: 'Камеры', category: 'Видеорегистраторы' },
+
+            { id: 'ТМ-0030', name: 'ИБП Ippon Back Basic 650 Euro (650 ВА / 360 Вт)', price: '4 790р.', manufacturer: 'Камеры', category: 'Накопители и питание' },
+            { id: 'ТМ-2763', name: 'Жёсткий диск 1 ТБ Seagate SkyHawk / WD Purple (64 МБ)', price: '9 800р.', manufacturer: 'Камеры', category: 'Накопители и питание' },
+            { id: 'ТМ-0062', name: 'Жёсткий диск 2 ТБ WD Purple WD23PURZ (64 МБ)', price: '13 900р.', manufacturer: 'Камеры', category: 'Накопители и питание' },
+            { id: 'ТМ-8217', name: 'Жёсткий диск 4 ТБ Seagate SkyHawk ST4000VX016 (256 МБ)', price: '16 500р.', manufacturer: 'Камеры', category: 'Накопители и питание' },
+
+            { id: 'ТМ-4732', name: 'Усилитель беспроводного сигнала TP-LINK TL-WA860RE', price: '3 950р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-4073', name: 'Коммутатор 5 портов D-LINK DES-1005C', price: '1 400р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-6346', name: 'Уличный LAN кабель (черный, без гофры)', price: '60р./м', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0429', name: 'Витая пара для помещений UTP 4х2х0.5 (Parlan/Hyperline)', price: '70р./м', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0153', name: 'Вилка RJ-45 (8P8C)', price: '10р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-9293', name: 'Монтажная коробка для камеры Atix AT-MA-PJB01', price: '310р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-9294', name: 'Монтажная коробка для камеры SUPRLAN LK 05-0900 (под заказ)', price: '870р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-6420', name: 'Монтажная коробка 10x15 для розетки', price: '390р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-3533', name: 'Удлинитель 220В 3м, 3 розетки 16А белый (P5143)', price: '480р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0417', name: 'Кабель-канал (короб) Legrand LEG30008 20х12.5мм', price: '210р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0014', name: 'Гофра ПНД легкая D20 черная (20120-100)', price: '15р./м', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0401', name: 'Крепление для гофры D20 DKC с застежкой (уп. 100 шт)', price: '7р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0397', name: 'Гофра ПВХ D16 с зондом (LX10116)', price: '20р./м', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0402', name: 'Крепление для гофры D16 DKC с застежкой (уп. 100 шт)', price: '7р.', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+            { id: 'ТМ-0398', name: 'Гофра ПВХ D20 с зондом (LX10120)', price: '25р./м', manufacturer: 'Камеры', category: 'Сеть и монтаж' },
+        ];
+
+        const EditItemModal = ({ editingItem, theme, manufacturers, onSave, onClose }) => {
+            const t = (dark, light, pink, marine, mint, coffee, expert) => {
+                if (theme === 'expert') {
+                    if (expert) return expert;
+                    return (light || dark)
+                        // Фон серый для подложек
+                        .replace(/bg-gray-100/g, 'bg-[#F4F5F7]')
+                        // Все насыщенные и темные янтарные заливки меняем на фирменный красный
+                        .replace(/bg-amber-(400|500|600|700|800|900|950)/g, 'bg-[#C62828]')
+                        .replace(/bg-\[#FFB300\]\/15/g, 'bg-[#FCE8E8]')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828]')
+                        // Наведение на кнопки
+                        .replace(/hover:bg-amber-(500|600|700|800|900|950)/g, 'hover:bg-[#B71C1C]')
+                        // Полупрозрачный текст подписей
+                        .replace(/text-amber-\d+\/(40|50|60|70)/g, 'text-gray-500')
+                        // Все акцентные янтарные тексты меняем на темный бордовый
+                        .replace(/text-amber-(400|500|600|700|800|900|950)/g, 'text-[#9A1B24]')
+                        .replace(/text-\[#FFB300\]/g, 'text-[#9A1B24]')
+                        // Рамки и кольца фокуса
+                        .replace(/border-amber-(500|600|700|800|900|950)/g, 'border-[#C62828]')
+                        .replace(/border-\[#FFB300\](\/50)?/g, 'border-[#C62828]')
+                        .replace(/focus:ring-amber-\d+/g, 'focus:ring-[#C62828]')
+                        .replace(/focus:border-amber-\d+/g, 'focus:border-[#C62828]')
+                        .replace(/shadow-amber-\d+\/\d+/g, 'shadow-[#C62828]/30');
+                }
+                if (theme === 'coffee') return coffee;
+                if (theme === 'mint') return mint;
+                if (theme === 'marine') return marine;
+                if (theme === 'pink') return pink;
+                if (theme === 'light') return light;
+                return dark;
+            };
+
+            const [form, setForm] = useState({
+                id: editingItem?.id || '',
+                name: editingItem?.name || '',
+                price: editingItem?.price || '5000р.',
+                manufacturer: editingItem?.manufacturer || 'Мое',
+                category: editingItem?.category || 'Основное'
+            });
+            const [errorMsg, setErrorMsg] = useState('');
+            const [emptyFields, setEmptyFields] = useState({ id: false, name: false });
+
+            const handleSave = () => {
+                const trimmedId = form.id?.trim() || '';
+                const trimmedName = form.name?.trim() || '';
+                
+                const missingId = !trimmedId;
+                const missingName = !trimmedName;
+                
+                setEmptyFields({ id: missingId, name: missingName });
+
+                if (missingId || missingName) {
+                    setErrorMsg('Пожалуйста, заполните обязательные поля');
+                    return;
+                }
+                
+                setErrorMsg('');
+                onSave({ ...form, id: trimmedId, name: trimmedName });
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4">
+                    <div className={`w-full max-w-sm rounded-lg border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-[#FDFBF7] border-[#8D6E63]')} p-5 shadow-2xl`}>
+                        <h3 className={`text-lg font-black mb-4 tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>
+                            {editingItem ? 'РЕДАКТИРОВАТЬ ПОЗИЦИЮ' : 'ДОБАВИТЬ ПОЗИЦИЮ'}
+                        </h3>
+                        
+                        {errorMsg && (
+                            <div className="mb-4 p-3 rounded-md text-xs font-bold bg-red-100 border-2 border-red-500 text-red-800 flex items-center shadow-sm">
+                                <Icon name="alert-triangle" size={16} className="mr-2 text-red-600 flex-shrink-0" />
+                                <span>{errorMsg}</span>
+                            </div>
+                        )}
+                        
+                        <div className="space-y-3 mb-6">
+                            <div>
+                                <label className="text-xs font-bold mb-1 block opacity-70">Производитель:</label>
+                                <select 
+                                    className={`w-full p-2 text-[16px] sm:text-sm rounded border ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-gray-50 border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-900', 'bg-[#EFEBE9] border-[#D7CCC8] text-[#3E2723]')}`}
+                                    value={form.manufacturer} onChange={e => setForm({...form, manufacturer: e.target.value})}
+                                >
+                                    {manufacturers.filter(m => m !== 'Избранное').map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold mb-1 block opacity-70">Категория:</label>
+                                <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-white border-pink-200 text-pink-900', 'bg-white border-blue-200 text-blue-900', 'bg-white border-emerald-200 text-emerald-900', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={form.category} onChange={e => setForm({...form, category: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className={`text-xs font-bold mb-1 block ${emptyFields.id ? 'text-red-500' : 'opacity-70'}`}>Артикул (ТМ / ID): *</label>
+                                <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border font-mono ${emptyFields.id ? 'border-red-500 ring-2 ring-red-500 bg-red-50 text-red-900' : t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-white border-pink-200 text-pink-900', 'bg-white border-blue-200 text-blue-900', 'bg-white border-emerald-200 text-emerald-900', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={form.id} onChange={e => { setForm({...form, id: e.target.value}); setEmptyFields({...emptyFields, id: false}); setErrorMsg(''); }} />
+                            </div>
+                            <div>
+                                <label className={`text-xs font-bold mb-1 block ${emptyFields.name ? 'text-red-500' : 'opacity-70'}`}>Название: *</label>
+                                <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border ${emptyFields.name ? 'border-red-500 ring-2 ring-red-500 bg-red-50 text-red-900' : t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-white border-pink-200 text-pink-900', 'bg-white border-blue-200 text-blue-900', 'bg-white border-emerald-200 text-emerald-900', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={form.name} onChange={e => { setForm({...form, name: e.target.value}); setEmptyFields({...emptyFields, name: false}); setErrorMsg(''); }} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold mb-1 block opacity-70">Цена:</label>
+                                <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border font-mono ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-white border-pink-200 text-pink-900', 'bg-white border-blue-200 text-blue-900', 'bg-white border-emerald-200 text-emerald-900', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={form.price} onChange={e => setForm({...form, price: e.target.value})} />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">ОТМЕНА</button>
+                            <button onClick={handleSave} className={`px-5 py-2 text-sm font-black rounded ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white hover:bg-[#B71C1C]')}`}>СОХРАНИТЬ</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const APP_VERSION = '1.1.0';
+
+        const App = () => {
+            const [theme, setTheme] = useState(() => localStorage.getItem('sklad_theme') || 'expert');
+            const [favorites, setFavorites] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_favorites') || '[]'); } catch { return []; }
+            });
+            const [customItems, setCustomItems] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_custom_items') || '[]'); } catch { return []; }
+            });
+            const [catalogEdits, setCatalogEdits] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_catalog_edits') || '{}'); } catch { return {}; }
+            });
+            const [deletedCatalogIds, setDeletedCatalogIds] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_deleted_ids') || '[]'); } catch { return []; }
+            });
+            const [catalog, setCatalog] = useState(() => {
+                try {
+                    const edits = JSON.parse(localStorage.getItem('sklad_catalog_edits') || '{}');
+                    const deleted = JSON.parse(localStorage.getItem('sklad_deleted_ids') || '[]');
+                    return initialCatalog
+                        .filter(item => !deleted.includes(item.id))
+                        .map(item => edits[item.id] ? { ...item, ...edits[item.id] } : item);
+                } catch { return initialCatalog; }
+            });
+            const [cart, setCart] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_cart') || '[]'); } catch { return []; }
+            });
+            const [userProfile, setUserProfile] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_profile') || '{"name":"","phone":"","address":""}'); }
+                catch { return { name: '', phone: '', address: '' }; }
+            });
+            const [orderHistory, setOrderHistory] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('sklad_order_history') || '[]'); } catch { return []; }
+            });
+            const [orderCounter, setOrderCounter] = useState(() => {
+                const saved = parseInt(localStorage.getItem('sklad_order_counter') || '0', 10);
+                return isNaN(saved) ? 0 : saved;
+            });
+            const [showHistoryModal, setShowHistoryModal] = useState(false);
+            const [pendingOrder, setPendingOrder] = useState(null);
+            const [currentOrderSaved, setCurrentOrderSaved] = useState(false);
+            const [confirmDeleteOrderId, setConfirmDeleteOrderId] = useState(null);
+
+            const [isEditMode, setIsEditMode] = useState(false);
+            const [activeTab, setActiveTab] = useState('CROW');
+            const [draftQuantities, setDraftQuantities] = useState({});
+            
+            const [toastMessage, setToastMessage] = useState(null);
+            const [copied, setCopied] = useState(false);
+
+            const showToast = (msg) => {
+                setToastMessage(msg);
+                setTimeout(() => setToastMessage(null), 3000);
+            };
+            
+            const [showCart, setShowCart] = useState(false);
+            const [showCheckout, setShowCheckout] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [showProfile, setShowProfile] = useState(false);
+            const [showEditModal, setShowEditModal] = useState(false);
+            const [editingItem, setEditingItem] = useState(null);
+            const [deliveryMethod, setDeliveryMethod] = useState('Самовывоз');
+            const [timeStr, setTimeStr] = useState('');
+            const [dateStr, setDateStr] = useState('');
+
+            const [showSuccessModal, setShowSuccessModal] = useState(false);
+            const [orderText, setOrderText] = useState('');
+            const [showCallModal, setShowCallModal] = useState(false);
+            const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [confirmClearCart, setConfirmClearCart] = useState(false);
+
+            useEffect(() => { localStorage.setItem('sklad_theme', theme); }, [theme]);
+            useEffect(() => { localStorage.setItem('sklad_favorites', JSON.stringify(favorites)); }, [favorites]);
+            useEffect(() => { localStorage.setItem('sklad_custom_items', JSON.stringify(customItems)); }, [customItems]);
+            useEffect(() => { localStorage.setItem('sklad_catalog_edits', JSON.stringify(catalogEdits)); }, [catalogEdits]);
+            useEffect(() => { localStorage.setItem('sklad_deleted_ids', JSON.stringify(deletedCatalogIds)); }, [deletedCatalogIds]);
+            useEffect(() => { localStorage.setItem('sklad_cart', JSON.stringify(cart)); }, [cart]);
+            useEffect(() => { localStorage.setItem('sklad_profile', JSON.stringify(userProfile)); }, [userProfile]);
+            useEffect(() => { localStorage.setItem('sklad_order_history', JSON.stringify(orderHistory)); }, [orderHistory]);
+            useEffect(() => { localStorage.setItem('sklad_order_counter', String(orderCounter)); }, [orderCounter]);
+
+            const commitOrderToHistory = () => {
+                if (currentOrderSaved || !pendingOrder || !pendingOrder.items || pendingOrder.items.length === 0) return;
+                const nextNum = orderCounter + 1;
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const newOrder = {
+                    id: Date.now(),
+                    orderNumber: nextNum,
+                    date: dateStr,
+                    deliveryMethod: pendingOrder.deliveryMethod,
+                    items: pendingOrder.items,
+                    text: pendingOrder.text
+                };
+                setOrderCounter(nextNum);
+                setOrderHistory(prev => [newOrder, ...prev]);
+                setCurrentOrderSaved(true);
+                setCart([]);
+            };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !window.XLSX) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const workbook = window.XLSX.read(data, { type: 'array' });
+                        let updatedCount = 0;
+                        const newEdits = { ...catalogEdits };
+                        const idRedirects = {}; // Старый ТМ -> Новый ТМ (для сохранения Избранного)
+
+                        // Нормализация строки для точного сравнения названий (убирает двойные пробелы и приводит к единому регистру)
+                        const norm = (str) => String(str || '').toLowerCase().replace(/c/g, 'с').replace(/\s+/g, ' ').trim();
+
+                        const excelItems = [];
+                        let currentSection = '';
+
+                        workbook.SheetNames.forEach(sheetName => {
+                            const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                            rows.forEach(row => {
+                                if (!row || row.length === 0) return;
+                                const col0 = String(row[0] ?? '').trim();
+                                const col1 = String(row[1] ?? '').trim();
+                                const col2 = String(row[2] ?? '').trim();
+
+                                // Проверяем, не заголовок ли это раздела (CROW, RITM, СИ-НОРД, Прочее, АКБ и т.д.)
+                                if (col0 && !col2 && /^(crow|dahua|ritm|си-норд|мы дома|wer|honeywell|прочее|акб|камеры)$/i.test(col0)) {
+                                    currentSection = col0.toUpperCase();
+                                    return;
+                                }
+
+                                let tm = '', excelName = '', rawPrice = col2;
+                                if (/^(ТМ-|КТ-|ИН-|МАТ-|sim |б-тм)/i.test(col0)) {
+                                    tm = col0; excelName = col1;
+                                } else if (/^(ТМ-|КТ-|ИН-|МАТ-|sim |б-тм)/i.test(col1)) {
+                                    tm = col1; excelName = col0;
+                                } else {
+                                    return;
+                                }
+
+                                const cleanPriceNum = String(rawPrice).replace(/[^\d.,]/g, '').replace(',', '.');
+                                const formattedPrice = rawPrice
+                                    ? (String(rawPrice).includes('р') ? String(rawPrice).trim() : `${cleanPriceNum || '0'}р.`)
+                                    : '0р.';
+
+                                excelItems.push({ tm, excelName, formattedPrice, section: currentSection });
+                            });
+                        });
+
+                        setCatalog(prevCatalog => prevCatalog.map(item => {
+                            // 1. Сначала ищем точное совпадение по ТМ (меняем ТОЛЬКО цену, название НЕ трогаем)
+                            const matchByTm = excelItems.find(ex => ex.tm.toLowerCase() === item.id.toLowerCase());
+                            if (matchByTm) {
+                                updatedCount++;
+                                const updatedItem = { ...item, price: matchByTm.formattedPrice };
+                                newEdits[item.id] = updatedItem;
+                                return updatedItem;
+                            }
+
+                            // 2. Если ТМ в файле изменился, ищем совпадение по названию (включая название без суффикса бренда)
+                            const itemNorm = norm(item.name);
+                            const brandNorm = norm(item.manufacturer);
+                            const itemWithoutBrand = itemNorm.endsWith(' ' + brandNorm)
+                                ? itemNorm.slice(0, -(brandNorm.length + 1)).trim()
+                                : itemNorm;
+
+                            const matchByName = excelItems.find(ex => {
+                                const exNorm = norm(ex.excelName);
+                                if (!exNorm) return false;
+                                const sectionOk = !ex.section || ex.section === brandNorm.toUpperCase();
+                                return sectionOk && (exNorm === itemNorm || exNorm === itemWithoutBrand);
+                            });
+
+                            if (matchByName) {
+                                updatedCount++;
+                                // Меняем ТМ и цену, но НАЗВАНИЕ (item.name) оставляем прежним!
+                                const updatedItem = {
+                                    ...item,
+                                    id: matchByName.tm,
+                                    name: item.name,
+                                    price: matchByName.formattedPrice
+                                };
+                                idRedirects[item.id] = matchByName.tm;
+                                newEdits[item.id] = updatedItem;
+                                return updatedItem;
+                            }
+
+                            return item;
+                        }));
+
+                        // Если у какой-то позиции обновился ТМ, обновляем его и в Избранном, чтобы звезда не слетела
+                        if (Object.keys(idRedirects).length > 0) {
+                            setFavorites(prevFavs => prevFavs.map(favId => idRedirects[favId] || favId));
+                        }
+
+                        setCatalogEdits(newEdits);
+                        showToast(`Прайс загружен: обновлено ${updatedCount} поз.`);
+                    } catch (err) {
+                        showToast('Ошибка при чтении файла Excel');
+                    }
+                    e.target.value = '';
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const t = (dark, light, pink, marine, mint, coffee, expert) => {
+                if (theme === 'expert') {
+                    if (expert) return expert;
+                    return (light || dark)
+                        // Фон серый для подложек
+                        .replace(/bg-gray-100/g, 'bg-[#F4F5F7]')
+                        // Все насыщенные и темные янтарные заливки меняем на фирменный красный
+                        .replace(/bg-amber-(400|500|600|700|800|900|950)/g, 'bg-[#C62828]')
+                        .replace(/bg-\[#FFB300\]\/15/g, 'bg-[#FCE8E8]')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828]')
+                        // Наведение на кнопки
+                        .replace(/hover:bg-amber-(500|600|700|800|900|950)/g, 'hover:bg-[#B71C1C]')
+                        // Полупрозрачный текст подписей
+                        .replace(/text-amber-\d+\/(40|50|60|70)/g, 'text-gray-500')
+                        // Все акцентные янтарные тексты меняем на темный бордовый
+                        .replace(/text-amber-(400|500|600|700|800|900|950)/g, 'text-[#9A1B24]')
+                        .replace(/text-\[#FFB300\]/g, 'text-[#9A1B24]')
+                        // Рамки и кольца фокуса
+                        .replace(/border-amber-(500|600|700|800|900|950)/g, 'border-[#C62828]')
+                        .replace(/border-\[#FFB300\](\/50)?/g, 'border-[#C62828]')
+                        .replace(/focus:ring-amber-\d+/g, 'focus:ring-[#C62828]')
+                        .replace(/focus:border-amber-\d+/g, 'focus:border-[#C62828]')
+                        .replace(/shadow-amber-\d+\/\d+/g, 'shadow-[#C62828]/30');
+                }
+                if (theme === 'coffee') return coffee;
+                if (theme === 'mint') return mint;
+                if (theme === 'marine') return marine;
+                if (theme === 'pink') return pink;
+                if (theme === 'light') return light;
+                return dark;
+            };
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    const now = new Date();
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const year = now.getFullYear();
+                    const weekdays = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+                    const weekday = weekdays[now.getDay()];
+                    
+                    const h = String(now.getHours()).padStart(2, '0');
+                    const m = String(now.getMinutes()).padStart(2, '0');
+                    const s = String(now.getSeconds()).padStart(2, '0');
+
+                    setDateStr(`${day}.${month}.${year}   ${weekday}`);
+                    setTimeStr(`${h}:${m}:${s}`);
+                }, 1000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const toggleFavorite = (id) => {
+                const item = catalog.find(i => i.id === id) || customItems.find(i => i.id === id);
+                const currentDraft = draftQuantities[id] || 0;
+                
+                setFavorites(prev => {
+                    if (prev.includes(id)) {
+                        if (item) showToast(`Удалено из избранного: ${item.name}`);
+                        return prev.filter(f => f !== id);
+                    } else {
+                        if (item) showToast(`В избранное: [${item.id}] ${item.name} x ${currentDraft > 0 ? currentDraft : 0} шт.`);
+                        return [...prev, id];
+                    }
+                });
+            };
+
+            const getDraftQty = (id) => draftQuantities[id] !== undefined ? draftQuantities[id] : 0;
+            const updateDraftQty = (id, delta) => setDraftQuantities(prev => {
+                let current = prev[id] || 0;
+                if (current === '') current = 0;
+                current += delta;
+                if (current < 0) current = 0;
+                return { ...prev, [id]: current };
+            });
+            const setAbsoluteDraftQty = (id, value) => {
+                if (value === '') return setDraftQuantities(prev => ({ ...prev, [id]: '' }));
+                let current = parseInt(value, 10);
+                if (isNaN(current) || current < 0) current = 0;
+                setDraftQuantities(prev => ({ ...prev, [id]: current }));
+            };
+            const clearDraftQty = (id) => setDraftQuantities(prev => ({ ...prev, [id]: 0 }));
+
+            const addToCart = (item, qty) => {
+                if (qty <= 0) return;
+                setCart(prev => {
+                    const existing = prev.find(i => i.equipment.id === item.id);
+                    if (existing) return prev.map(i => i.equipment.id === item.id ? { ...i, quantity: i.quantity + qty } : i);
+                    return [{ equipment: item, quantity: qty }, ...prev];
+                });
+                clearDraftQty(item.id);
+                showToast(`${qty}шт ${item.name} добавлено в корзину`);
+            };
+
+            const draftItemsIds = Object.keys(draftQuantities).filter(id => draftQuantities[id] > 0);
+            const totalDraftItems = draftItemsIds.length;
+
+            const addAllDraftsToCart = () => {
+                if (totalDraftItems === 0) return;
+                const itemsToAdd = [];
+                draftItemsIds.forEach(id => {
+                    const qty = draftQuantities[id];
+                    const item = catalog.find(i => i.id === id) || customItems.find(i => i.id === id);
+                    if (item && qty > 0) itemsToAdd.push({ item, qty });
+                });
+                if (itemsToAdd.length === 0) return;
+
+                setCart(prev => {
+                    const newCart = [...prev];
+                    itemsToAdd.forEach(({ item, qty }) => {
+                        const existing = newCart.find(i => i.equipment.id === item.id);
+                        if (existing) existing.quantity += qty;
+                        else newCart.push({ equipment: item, quantity: qty });
+                    });
+                    return newCart;
+                });
+                setDraftQuantities({});
+                if (itemsToAdd.length === 1) showToast(`${itemsToAdd[0].qty}шт ${itemsToAdd[0].item.name} добавлено в корзину`);
+                else showToast(`В корзину добавлено позиций: ${itemsToAdd.length}`);
+            };
+
+            const removeFromCart = (id) => setCart(prev => prev.filter(i => i.equipment.id !== id));
+            const updateCartQty = (id, delta) => setCart(prev => prev.map(i => i.equipment.id === id ? { ...i, quantity: i.quantity + delta } : i).filter(i => i.quantity > 0));
+
+            const totalCartPositions = cart.length;
+            const totalCartUnits = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            const systemBrands = ['CROW', 'Dahua', 'RITM', 'СИ-НОРД', 'Мы дома', 'Honeywell'];
+            const mainTabs = ['Прочее', 'АКБ', 'Камеры', 'Избранное', 'Мое'];
+
+            const uniqueById = (arr) => Array.from(new Map(arr.map(item => [item.id, item])).values());
+
+            const displayedItems = useMemo(() => {
+                const q = searchQuery.trim().toLowerCase();
+                if (q !== '') {
+                    const allItems = [...catalog, ...customItems.filter(ci => !catalog.find(c => c.id === ci.id))];
+                    const filtered = allItems.filter(item =>
+                        item.id.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
+                    );
+                    return uniqueById(filtered);
+                }
+                if (activeTab === 'Избранное') return uniqueById(catalog.filter(item => favorites.includes(item.id)));
+                if (activeTab === 'Мое') return customItems;
+                return catalog.filter(item => item.manufacturer === activeTab);
+            }, [catalog, activeTab, favorites, customItems, searchQuery]);
+
+            const groupedItems = useMemo(() => {
+                const groups = {};
+                displayedItems.forEach(item => {
+                    if (!groups[item.category]) groups[item.category] = [];
+                    groups[item.category].push(item);
+                });
+                return groups;
+            }, [displayedItems]);
+
+            const handleCopyOrder = () => {
+                const textArea = document.createElement("textarea");
+                textArea.value = orderText;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                    showToast('Заявка скопирована в буфер обмена!');
+                } catch (err) {
+                    showToast('Ошибка при копировании!');
+                }
+                document.body.removeChild(textArea);
+            };
+
+            useEffect(() => {
+                document.body.style.backgroundColor = t('#101112', '#F0F2F5', '#fdf2f8', '#f0f9ff', '#f0fdf4', '#F5F2EE', '#F4F5F7');
+                document.body.style.color = t('#F3F4F6', '#111827', '#831843', '#0c4a6e', '#14532d', '#3E2723', '#111827');
+            }, [theme]);
+
+            return (
+                <div className={`fixed inset-0 flex flex-col w-full overflow-hidden transition-colors duration-200 ${t('bg-[#101112] text-gray-100', 'bg-[#F0F2F5] text-gray-900', 'bg-pink-50 text-pink-950', 'bg-blue-50 text-blue-950', 'bg-emerald-50 text-emerald-950', 'bg-[#F5F2EE] text-[#3E2723]')}`}>
+                    
+                    {toastMessage && (
+                        <div className={`fixed top-1.5 sm:top-2 left-1/2 transform -translate-x-1/2 z-[60] px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg border-2 shadow-xl font-mono text-[11px] sm:text-xs font-black tracking-wide text-center max-w-[92vw] sm:max-w-md md:max-w-lg truncate pointer-events-none transition-all ${t(
+                            'bg-[#282B30] border-[#FFB300] text-[#FFB300]',
+                            'bg-white border-amber-600 text-amber-900',
+                            'bg-white border-pink-500 text-pink-700',
+                            'bg-white border-blue-600 text-blue-800',
+                            'bg-white border-emerald-600 text-emerald-800',
+                            'bg-[#FDFBF7] border-[#8D6E63] text-[#5D4037]',
+                            'bg-white border-[#C62828] text-[#9A1B24] shadow-black/20'
+                        )}`}>
+                            {toastMessage}
+                        </div>
+                    )}
+
+                    <header className={`flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-sm z-10 ${t('bg-[#282B30]', 'bg-white', 'bg-pink-100', 'bg-blue-100', 'bg-emerald-100', 'bg-[#EFEBE9]', 'bg-gradient-to-r from-[#5A1017] via-[#75161F] to-[#5A1017] border-[#9EA4B0]/40 text-white shadow-lg')}`}>
+                        <div className="flex items-center space-x-3">
+                            <div className="flex flex-col">
+                                <div className="flex items-center space-x-2">
+                                    <span className={`text-[11px] font-extrabold tracking-wider font-mono opacity-70 ${t('', '', 'text-pink-800', 'text-blue-900', 'text-emerald-900', 'text-[#5D4037]')}`}>{dateStr}</span>
+                                    {isEditMode && (
+                                        <button 
+                                            onClick={() => setIsEditMode(false)}
+                                            className="flex items-center px-2 py-0.5 rounded text-[10px] font-black tracking-widest bg-red-600 text-white shadow hover:bg-red-700 transition-colors animate-pulse"
+                                            title="Отключить режим редактирования"
+                                        >
+                                            <Icon name="pen-off" size={12} className="mr-1" />
+                                            РЕДАКТ.
+                                        </button>
+                                    )}
+                                </div>
+                                <span className={`text-[15px] font-black tracking-widest font-mono ${t('', '', 'text-pink-900', 'text-blue-950', 'text-emerald-950', 'text-[#3E2723]')}`}>{timeStr}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                            <button className={`p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowCallModal(true)}>
+                                <Icon name="phone" />
+                            </button>
+                            <button className={`p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowSettings(true)}>
+                                <Icon name="settings" />
+                            </button>
+                            <button className={`relative p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowCart(true)}>
+                                <Icon name="shopping-cart" />
+                                {totalCartUnits > 0 && (
+                                    <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded">
+                                        {totalCartUnits}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className={`flex-shrink-0 border-b ${t('bg-[#282B30] border-gray-800', 'bg-white border-gray-200', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
+                        <div className="flex items-stretch relative">
+                            <div className="relative flex-shrink-0">
+                                <button
+                                    onClick={() => setShowBrandDropdown(prev => !prev)}
+                                    className={`h-full px-2 sm:px-3.5 py-2.5 text-[10px] sm:text-[13px] font-bold tracking-wide border-b-2 whitespace-nowrap flex items-center transition-colors
+                                        ${systemBrands.includes(activeTab)
+                                            ? t('border-[#FFB300] text-[#FFB300]', 'border-amber-900 text-amber-900', 'border-pink-600 text-pink-600', 'border-blue-600 text-blue-600', 'border-emerald-600 text-emerald-700', 'border-[#6D4C41] text-[#5D4037]')
+                                            : t('border-transparent text-gray-500', 'border-transparent text-amber-900/60', 'border-transparent text-pink-900/60', 'border-transparent text-blue-900/60', 'border-transparent text-emerald-900/60', 'border-transparent text-[#6D4C41]/60')}
+                                    `}
+                                >
+                                    <span>{systemBrands.includes(activeTab) ? activeTab.toUpperCase() : 'СИСТЕМЫ'}</span>
+                                    <Icon name={showBrandDropdown ? 'chevron-up' : 'chevron-down'} size={13} className="ml-1" />
+                                </button>
+                                {showBrandDropdown && (
+                                    <div className={`absolute left-0 top-full mt-1 z-50 rounded-lg border-2 shadow-2xl min-w-[160px] overflow-hidden ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-[#FDFBF7] border-[#8D6E63]')}`}>
+                                        {systemBrands.map(brand => (
+                                            <button
+                                                key={brand}
+                                                onClick={() => { setActiveTab(brand); setShowBrandDropdown(false); setSearchQuery(''); }}
+                                                className={`w-full text-left px-4 py-2.5 text-[12px] font-bold tracking-wide transition-colors
+                                                    ${activeTab === brand
+                                                        ? t('bg-[#FFB300]/20 text-[#FFB300]', 'bg-amber-100 text-amber-900', 'bg-pink-100 text-pink-700', 'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-800', 'bg-[#EFEBE9] text-[#5D4037]')
+                                                        : t('text-gray-300 hover:bg-[#33363B]', 'text-gray-700 hover:bg-gray-100', 'text-pink-900 hover:bg-pink-50', 'text-blue-900 hover:bg-blue-50', 'text-emerald-900 hover:bg-emerald-50', 'text-[#3E2723] hover:bg-[#EFEBE9]')}
+                                                `}
+                                            >
+                                                {brand}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className={`w-px my-2 ${t('bg-gray-700', 'bg-gray-200', 'bg-pink-200', 'bg-blue-200', 'bg-emerald-200', 'bg-[#D7CCC8]')}`} />
+                            {mainTabs.map(m => (
+                                <button
+                                    key={m}
+                                    onClick={() => { setActiveTab(m); setShowBrandDropdown(false); setSearchQuery(''); }}
+                                    className={`px-2 sm:px-3.5 py-2.5 whitespace-nowrap text-[10px] sm:text-[13px] font-bold tracking-wide border-b-2 transition-colors flex items-center
+                                        ${activeTab === m
+                                            ? t('border-[#FFB300] text-[#FFB300]', 'border-amber-900 text-amber-900', 'border-pink-600 text-pink-600', 'border-blue-600 text-blue-600', 'border-emerald-600 text-emerald-700', 'border-[#6D4C41] text-[#5D4037]')
+                                            : t('border-transparent text-gray-500', 'border-transparent text-amber-900/60', 'border-transparent text-pink-900/60', 'border-transparent text-blue-900/60', 'border-transparent text-emerald-900/60', 'border-transparent text-[#6D4C41]/60')}
+                                    `}
+                                >
+                                    {m === 'Избранное' && <Icon name="star" size={13} className="mr-1" />}
+                                    {m.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                        <div className={`px-3 py-2 border-t ${t('border-gray-800', 'border-gray-200', 'border-pink-200', 'border-blue-200', 'border-emerald-200', 'border-[#D7CCC8]')}`}>
+                            <div className={`flex items-center rounded-lg border px-3 ${t('bg-[#1E2125] border-[#444]', 'bg-gray-50 border-gray-300', 'bg-pink-50 border-pink-200', 'bg-blue-50 border-blue-200', 'bg-emerald-50 border-emerald-200', 'bg-white border-[#D7CCC8]')}`}>
+                                <Icon name="search" size={15} className={`flex-shrink-0 mr-2 ${t('text-gray-500', 'text-gray-400', 'text-pink-400', 'text-blue-400', 'text-emerald-500', 'text-[#A1887F]')}`} />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Поиск по артикулу или названию..."
+                                    className={`flex-1 py-2 bg-transparent outline-none text-[16px] sm:text-sm font-medium ${t('text-gray-100 placeholder:text-gray-600', 'text-gray-800 placeholder:text-gray-400', 'text-pink-900 placeholder:text-pink-400', 'text-blue-900 placeholder:text-blue-400', 'text-emerald-950 placeholder:text-emerald-500', 'text-[#3E2723] placeholder:text-[#A1887F]')}`}
+                                />
+                                {searchQuery && (
+                                    <button onClick={() => setSearchQuery('')} className={`flex-shrink-0 ml-1 p-1 rounded-full ${t('text-gray-500 hover:text-gray-300', 'text-gray-400 hover:text-gray-600', 'text-pink-400 hover:text-pink-600', 'text-blue-400 hover:text-blue-600', 'text-emerald-500 hover:text-emerald-700', 'text-[#A1887F] hover:text-[#5D4037]')}`}>
+                                        <Icon name="x" size={15} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-4 transition-all" style={{ paddingBottom: '180px' }}>
+                        {activeTab === 'Мое' && (
+                            <div className="mb-4 flex justify-center">
+                                <button 
+                                    onClick={() => {
+                                        setIsEditMode(true);
+                                        setEditingItem(null); 
+                                        setShowEditModal(true); 
+                                    }}
+                                    className={`w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs font-black tracking-widest shadow-xl flex items-center justify-center transition-all active:scale-95 ${t('bg-[#FFB300] text-black shadow-[#FFB300]/20', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30')}`}
+                                >
+                                    <Icon name="plus" size={18} className="mr-2" />
+                                    ДОБАВИТЬ ОБОРУДОВАНИЕ
+                                </button>
+                            </div>
+                        )}
+                        {displayedItems.length === 0 ? (
+                            <div className="text-center mt-20 flex flex-col items-center justify-center">
+                                <div className="text-sm font-bold text-gray-500 opacity-70 uppercase tracking-widest mb-6">
+                                    {activeTab === 'Мое' ? 'Здесь будет оборудование которое вы создали' : 'ОБОРУДОВАНИЕ НЕ НАЙДЕНО'}
+                                </div>
+
+                            </div>
+                        ) : (
+                            Object.keys(groupedItems).map(category => (
+                                <div key={category} className={`mb-5 ${category === 'Базовый комплект' && activeTab !== 'Избранное' && activeTab !== 'Мое' ? t('p-3 bg-[#1E2125] border border-[#FFB300] rounded-lg', 'p-3 bg-amber-50/50 border border-amber-900/20 rounded-lg', 'p-3 bg-pink-100/50 border border-pink-400 rounded-lg', 'p-3 bg-blue-50 border border-blue-300 rounded-lg', 'p-3 bg-emerald-50 border border-emerald-300 rounded-lg', 'p-3 bg-[#EFEBE9] border border-[#A1887F] rounded-lg') : ''}`}>
+                                    <h2 className={`text-[15px] font-black tracking-widest uppercase mb-3 flex items-center ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>
+                                        <div className={`w-1 h-5 mr-2 ${t('bg-[#FFB300]', 'bg-amber-900', 'bg-pink-500', 'bg-blue-600', 'bg-emerald-600', 'bg-[#6D4C41]')}`}></div>
+                                        {category}
+                                    </h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {groupedItems[category].map(item => {
+                                            const qtyInCart = cart.find(i => i.equipment.id === item.id)?.quantity || 0;
+                                            const draftQty = getDraftQty(item.id);
+                                            const isFav = favorites.includes(item.id);
+
+                                            return (
+                                                <div key={item.id} className={`relative flex flex-col justify-between p-4 rounded-md border ${t('bg-[#282B30] border-[#3A3D42]', 'bg-white border-gray-200 shadow-sm', 'bg-white border-pink-200 shadow-sm', 'bg-white border-blue-200 shadow-sm', 'bg-white border-emerald-200 shadow-sm', 'bg-white border-[#D7CCC8] shadow-sm')}`}>
+                                                    
+                                                    <div className="absolute top-0 right-0">
+                                                        <button 
+                                                            onClick={() => toggleFavorite(item.id)}
+                                                            className="p-3 transition-transform hover:scale-110 outline-none"
+                                                        >
+                                                            <Icon 
+                                                                name="star" 
+                                                                size={22} 
+                                                                className={t('text-[#FFB300]', 'text-amber-700', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')}
+                                                                fill={isFav ? "currentColor" : "none"} 
+                                                            />
+                                                        </button>
+                                                    </div>
+
+                                                    <div>
+                                                        <h3 className="text-[14px] font-bold pr-14 leading-tight mb-2">{item.name}</h3>
+                                                        <div className="flex items-center space-x-3 mb-3">
+                                                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono ${t('bg-[#1E2125] text-[#FFB300]', 'bg-gray-100 text-amber-900', 'bg-pink-100 text-pink-700', 'bg-blue-50 text-blue-700', 'bg-emerald-50 text-emerald-800', 'bg-[#D7CCC8]/40 text-[#3E2723]')}`}>
+                                                                {item.id}
+                                                            </span>
+                                                            <span className="text-[12px] font-mono opacity-60">{item.price}</span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        {(qtyInCart > 0 || isEditMode) && (
+                                                            <div className="flex justify-end items-center mb-3 space-x-2">
+                                                                {isEditMode && (
+                                                                    <>
+                                                                        <button onClick={() => { setEditingItem(item); setShowEditModal(true); }} className={`p-1 ${t('text-[#FFB300]', 'text-amber-500', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')}`}><Icon name="pencil" size={16}/></button>
+                                                                        <button onClick={() => {
+                                                                            setCatalog(p => p.filter(i => i.id !== item.id));
+                                                                            setCustomItems(p => p.filter(i => i.id !== item.id));
+                                                                            setDeletedCatalogIds(p => p.includes(item.id) ? p : [...p, item.id]);
+                                                                            setCatalogEdits(p => { const copy = { ...p }; delete copy[item.id]; return copy; });
+                                                                            showToast(`Товар ${item.id} удален`);
+                                                                        }} className="p-1 text-red-500"><Icon name="trash-2" size={16}/></button>
+                                                                    </>
+                                                                )}
+                                                                {qtyInCart > 0 && (
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <span className={`px-2 py-1 rounded text-[10px] font-black border ${t('bg-[#33FF33]/15 text-[#33FF33] border-[#33FF33]/60', 'bg-green-100 text-green-700 border-green-300', 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300', 'bg-blue-100 text-blue-700 border-blue-300', 'bg-emerald-100 text-emerald-800 border-emerald-300', 'bg-[#D7CCC8]/60 text-[#3E2723] border-[#A1887F]')}`}>
+                                                                            В КОРЗИНЕ: {qtyInCart}
+                                                                        </span>
+                                                                        <button onClick={() => removeFromCart(item.id)} className={`px-2 py-1 rounded text-[10px] font-black border ${t('bg-white text-black border-white', 'bg-white text-gray-600 border-gray-300', 'bg-white text-pink-600 border-pink-300', 'bg-white text-blue-600 border-blue-300', 'bg-white text-emerald-700 border-emerald-300', 'bg-white text-[#5D4037] border-[#D7CCC8]')}`}>
+                                                                            <Icon name="x" size={12} className="inline mr-1" />
+                                                                            УДАЛИТЬ
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex flex-wrap items-center justify-between mt-auto pt-2 gap-2">
+                                                            <div className="flex items-center space-x-1">
+                                                                <button onClick={() => clearDraftQty(item.id)} className={`w-7 h-8 sm:w-8 flex items-center justify-center rounded border ${t('bg-[#33363B] border-[#4A4E54]', 'bg-gray-200 border-gray-300 text-gray-600', 'bg-pink-100 border-pink-200 text-pink-700', 'bg-blue-100 border-blue-200 text-blue-700', 'bg-emerald-100 border-emerald-200 text-emerald-800', 'bg-[#EFEBE9] border-[#D7CCC8] text-[#5D4037]')}`}><Icon name="x" size={16}/></button>
+                                                                <button onClick={() => updateDraftQty(item.id, -1)} className={`w-7 h-8 sm:w-8 flex items-center justify-center rounded border font-black text-sm ${t('bg-[#33363B] border-[#4A4E54]', 'bg-gray-200 border-gray-300 text-gray-600', 'bg-pink-100 border-pink-200 text-pink-700', 'bg-blue-100 border-blue-200 text-blue-700', 'bg-emerald-100 border-emerald-200 text-emerald-800', 'bg-[#EFEBE9] border-[#D7CCC8] text-[#5D4037]')}`}>-1</button>
+                                                                
+                                                                <input 
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={draftQty}
+                                                                    onChange={(e) => setAbsoluteDraftQty(item.id, e.target.value)}
+                                                                    onBlur={(e) => { if (e.target.value === '') setAbsoluteDraftQty(item.id, 0); }}
+                                                                    className={`w-10 h-8 sm:w-12 text-center flex items-center justify-center rounded border font-black text-[16px] sm:text-sm font-mono transition-colors focus:outline-none focus:ring-2 ${t('bg-[#121212] border-[#444] text-white focus:ring-[#FFB300]', 'bg-gray-50 border-gray-300 text-black focus:ring-amber-500', 'bg-pink-50 border-pink-300 text-pink-900 focus:ring-pink-400', 'bg-blue-50 border-blue-300 text-blue-900 focus:ring-blue-400', 'bg-emerald-50 border-emerald-300 text-emerald-950 focus:ring-emerald-400', 'bg-white border-[#D7CCC8] text-[#3E2723] focus:ring-[#8D6E63]')}`}
+                                                                />
+                                                                
+                                                                <button onClick={() => updateDraftQty(item.id, 1)} className={`w-7 h-8 sm:w-8 flex items-center justify-center rounded border font-black text-sm ${t('bg-[#FFB300]/15 border-[#FFB300]/50 text-[#FFB300]', 'bg-amber-200 border-amber-600 text-amber-900', 'bg-pink-200 border-pink-500 text-pink-800', 'bg-blue-200 border-blue-600 text-blue-800', 'bg-emerald-200 border-emerald-600 text-emerald-900', 'bg-[#D7CCC8] border-[#8D6E63] text-[#3E2723]', 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200')}`}>+1</button>
+                                                                <button onClick={() => updateDraftQty(item.id, 6)} className={`w-7 h-8 sm:w-8 flex items-center justify-center rounded border font-black text-sm ${t('bg-[#FFB300]/15 border-[#FFB300]/50 text-[#FFB300]', 'bg-amber-200 border-amber-600 text-amber-900', 'bg-pink-200 border-pink-500 text-pink-800', 'bg-blue-200 border-blue-600 text-blue-800', 'bg-emerald-200 border-emerald-600 text-emerald-900', 'bg-[#D7CCC8] border-[#8D6E63] text-[#3E2723]', 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200')}`}>+6</button>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => addToCart(item, draftQty)}
+                                                                disabled={!draftQty || draftQty <= 0}
+                                                                className={`flex-grow sm:flex-grow-0 px-3 py-1.5 rounded font-black text-xs flex items-center justify-center transition-all ${
+                                                                    draftQty > 0
+                                                                        ? t(
+                                                                            'bg-[#FFB300] text-black shadow-md shadow-[#FFB300]/20 active:scale-95',
+                                                                            'bg-amber-600 text-white shadow-md shadow-amber-600/30 active:scale-95',
+                                                                            'bg-pink-500 text-white shadow-md shadow-pink-500/30 active:scale-95',
+                                                                            'bg-blue-600 text-white shadow-md shadow-blue-600/30 active:scale-95',
+                                                                            'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 active:scale-95',
+                                                                            'bg-[#6D4C41] text-white shadow-md shadow-[#6D4C41]/30 active:scale-95',
+                                                                            'bg-[#C62828] text-white shadow-md shadow-[#C62828]/30 hover:bg-[#B71C1C] active:scale-95'
+                                                                          )
+                                                                        : t(
+                                                                            'bg-[#1E2125] text-gray-500 border border-gray-700 cursor-not-allowed',
+                                                                            'bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed',
+                                                                            'bg-pink-100 text-pink-400 border border-pink-200 cursor-not-allowed',
+                                                                            'bg-blue-100 text-blue-400 border border-blue-200 cursor-not-allowed',
+                                                                            'bg-emerald-100 text-emerald-400 border border-emerald-200 cursor-not-allowed',
+                                                                            'bg-[#EFEBE9] text-[#8D6E63]/60 border border-[#D7CCC8] cursor-not-allowed',
+                                                                            'bg-gray-200 text-gray-500 border border-gray-300 cursor-not-allowed'
+                                                                          )
+                                                                }`}
+                                                            >
+                                                                <Icon name="plus" size={14} className="mr-1"/> ДОБАВИТЬ
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {isEditMode && !showEditModal && !showCart && !showCheckout && (
+                        <button 
+                            onClick={() => setIsEditMode(false)}
+                            className="fixed right-4 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-lg z-50 transition-all bg-red-600 text-white shadow-red-600/30 active:scale-95"
+                            style={{ bottom: `calc(${totalDraftItems > 0 ? '160px' : '90px'} + env(safe-area-inset-bottom, 16px))` }}
+                            title="Отключить режим редактирования"
+                        >
+                            <Icon name="pen-off" size={24} />
+                        </button>
+                    )}
+
+                    {totalDraftItems > 0 && !showCart && !showCheckout && !showSettings && !showEditModal && (
+                        <div 
+                            className={`fixed left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md p-3 rounded-xl sm:rounded-2xl shadow-2xl flex justify-between items-center transition-all z-50 border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-600', 'bg-white border-pink-500', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-white border-[#8D6E63]')}`}
+                            style={{ bottom: 'calc(90px + env(safe-area-inset-bottom, 16px))' }}
+                        >
+                            <div className="flex flex-col items-start pl-2">
+                                <span className={`text-[9px] sm:text-[10px] font-black tracking-widest ${t('text-gray-400', 'text-gray-500', 'text-pink-400', 'text-blue-500', 'text-emerald-600', 'text-[#8D6E63]')}`}>ВЫБРАНО</span>
+                                <span className={`text-lg sm:text-xl font-black font-mono leading-none mt-1 ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>{totalDraftItems}</span>
+                            </div>
+                            <button 
+                                onClick={addAllDraftsToCart}
+                                className={`px-4 py-3 sm:px-5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-black tracking-widest shadow-lg flex items-center ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30')}`}
+                            >
+                                <Icon name="shopping-cart" size={16} className="mr-1 sm:mr-2" />
+                                ДОБАВИТЬ
+                            </button>
+                        </div>
+                    )}
+
+                    {showEditModal && (
+                        <EditItemModal 
+                            editingItem={editingItem}
+                            theme={theme}
+                            manufacturers={manufacturers}
+                            onSave={(newItem) => {
+                                if (editingItem) {
+                                    setCatalog(prev => prev.map(i => i.id === editingItem.id ? newItem : i));
+                                    setCustomItems(prev => prev.map(i => i.id === editingItem.id ? newItem : i));
+                                    setCatalogEdits(prev => ({ ...prev, [newItem.id]: newItem }));
+                                    showToast(`Товар ${newItem.id} обновлен`);
+                                } else {
+                                    setCatalog(prev => [...prev, newItem]);
+                                    setCustomItems(prev => [...prev, newItem]);
+                                    showToast(`Товар ${newItem.id} добавлен в «Мое»`);
+                                }
+                                setShowEditModal(false);
+                                setEditingItem(null);
+                            }}
+                            onClose={() => { setShowEditModal(false); setEditingItem(null); }}
+                        />
+                    )}
+
+                    {showCart && (
+                        <div className="fixed inset-0 w-full bg-black/80 z-50 flex flex-col">
+                            <div className={`p-4 flex items-center justify-between flex-shrink-0 ${t('bg-[#282B30]', 'bg-white', 'bg-pink-100', 'bg-blue-100', 'bg-emerald-100', 'bg-[#EFEBE9]')}`}>
+                                <h2 className={`font-black text-base tracking-wider ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>ЗАЯВКА НА СКЛАД</h2>
+                                <div className="flex items-center space-x-2">
+                                    {cart.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                if (confirmClearCart) {
+                                                    setCart([]);
+                                                    setConfirmClearCart(false);
+                                                    showToast('Корзина очищена');
+                                                } else {
+                                                    setConfirmClearCart(true);
+                                                    setTimeout(() => setConfirmClearCart(false), 3000);
+                                                }
+                                            }}
+                                            className={`flex items-center px-2.5 py-1.5 rounded text-[10px] font-black tracking-widest transition-all ${confirmClearCart ? 'bg-red-600 text-white animate-pulse' : t('bg-[#33363B] text-gray-400 hover:text-red-400', 'bg-gray-100 text-gray-500 hover:text-red-500', 'bg-pink-100 text-pink-400 hover:text-red-500', 'bg-blue-100 text-blue-400 hover:text-red-500', 'bg-emerald-100 text-emerald-500 hover:text-red-500', 'bg-[#EFEBE9] text-[#A1887F] hover:text-red-500')}`}
+                                        >
+                                            <Icon name="trash-2" size={13} className="mr-1" />
+                                            {confirmClearCart ? 'ТОЧНО ОЧИСТИТЬ?' : 'ОЧИСТИТЬ ВСЁ'}
+                                        </button>
+                                    )}
+                                    <button onClick={() => { setShowCart(false); setConfirmClearCart(false); }} className="p-2"><Icon name="x" /></button>
+                                </div>
+                            </div>
+                            
+                            <div className={`px-4 py-3 flex justify-start items-center space-x-6 text-xs font-bold tracking-widest flex-shrink-0 ${t('bg-[#1E2125] text-gray-400', 'bg-gray-200 text-gray-700', 'bg-pink-200 text-pink-900', 'bg-blue-200 text-blue-900', 'bg-emerald-200 text-emerald-900', 'bg-[#D7CCC8] text-[#3E2723]')}`}>
+                                <span className={`font-black ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-700', 'text-emerald-800', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>ПОЗИЦИЙ: {totalCartPositions}</span>
+                                <span className={`font-black ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-700', 'text-emerald-800', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>ЕДИНИЦ: {totalCartUnits}</span>
+                            </div>
+
+                            <div className={`flex-1 overflow-y-auto p-3 space-y-2 ${t('bg-[#101112]', 'bg-[#F0F2F5]', 'bg-pink-50', 'bg-blue-50', 'bg-emerald-50', 'bg-[#F5F2EE]')}`} style={{ paddingBottom: '160px' }}>
+                                {cart.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full opacity-50">
+                                        <Icon name="shopping-cart" size={64} className="mb-4" />
+                                        <span className="font-bold tracking-widest text-sm">ПОЗИЦИИ НЕ ВЫБРАНЫ</span>
+                                    </div>
+                                ) : (
+                                    cart.map(c => (
+                                        <div key={c.equipment.id} className={`p-3 rounded border ${t('bg-[#282B30] border-transparent', 'bg-white border-gray-300', 'bg-white border-pink-200', 'bg-white border-blue-200', 'bg-white border-emerald-200', 'bg-white border-[#D7CCC8]')}`}>
+                                            <h4 className="text-[13px] leading-tight font-bold mb-0.5">{c.equipment.name}</h4>
+                                            <div className={`text-[11px] font-mono font-bold mb-2.5 ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#6D4C41]')}`}>АРТИКУЛ: {c.equipment.id}</div>
+                                            
+                                            <div className="flex justify-end items-center space-x-1.5">
+                                                <button onClick={() => removeFromCart(c.equipment.id)} className={`w-7 h-7 flex justify-center items-center rounded ${t('bg-[#3B3E43] text-white', 'bg-gray-200 text-gray-800 border border-gray-300 hover:bg-gray-300', 'bg-pink-200 text-pink-700', 'bg-blue-200 text-blue-800', 'bg-emerald-200 text-emerald-900', 'bg-[#D7CCC8] text-[#3E2723]', 'bg-gray-200 text-gray-800 border border-gray-300 hover:bg-gray-300')}`}><Icon name="x" size={14}/></button>
+                                                <button onClick={() => updateCartQty(c.equipment.id, -1)} className={`w-7 h-7 flex justify-center items-center rounded text-[12px] font-black ${t('bg-[#3B3E43] text-white', 'bg-gray-200 text-gray-800 border border-gray-300 hover:bg-gray-300', 'bg-pink-200 text-pink-700', 'bg-blue-200 text-blue-800', 'bg-emerald-200 text-emerald-900', 'bg-[#D7CCC8] text-[#3E2723]', 'bg-gray-200 text-gray-800 border border-gray-300 hover:bg-gray-300')}`}>-1</button>
+                                                <div className={`w-10 text-center font-mono font-black text-base ${t('text-white', 'text-gray-900', 'text-pink-950', 'text-blue-950', 'text-emerald-950', 'text-[#3E2723]', 'text-[#9A1B24]')}`}>{c.quantity}</div>
+                                                <button onClick={() => updateCartQty(c.equipment.id, 1)} className={`w-7 h-7 flex justify-center items-center rounded text-[12px] font-black ${t('bg-[#FFB300] text-black', 'bg-amber-500 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200')}`}>+1</button>
+                                                <button onClick={() => updateCartQty(c.equipment.id, 6)} className={`w-7 h-7 flex justify-center items-center rounded text-[12px] font-black ${t('bg-[#FFB300] text-black', 'bg-amber-500 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200')}`}>+6</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {cart.length > 0 && (
+                                <button 
+                                    onClick={() => { setShowCart(false); setShowCheckout(true); }}
+                                    className={`fixed left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md py-4 rounded-xl text-sm font-black tracking-widest shadow-2xl border-2 z-[60] transition-all ${t('bg-[#FFB300] border-[#FFB300] text-black', 'bg-amber-600 border-amber-700 text-white', 'bg-pink-500 border-pink-600 text-white', 'bg-blue-600 border-blue-700 text-white', 'bg-emerald-600 border-emerald-700 text-white', 'bg-[#6D4C41] border-[#5D4037] text-white', 'bg-[#C62828] border-[#B71C1C] text-white hover:bg-[#B71C1C]')}`}
+                                    style={{ bottom: 'calc(90px + env(safe-area-inset-bottom, 16px))' }}
+                                >
+                                    ПЕРЕЙТИ К ОФОРМЛЕНИЮ
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {showCheckout && (
+                        <div className={`absolute inset-0 w-full h-full z-50 flex flex-col ${t('bg-[#101112]', 'bg-gray-100', 'bg-pink-50', 'bg-blue-50', 'bg-emerald-50', 'bg-[#F5F2EE]')}`}>
+                            <div className={`p-4 flex items-center space-x-4 shadow-sm flex-shrink-0 ${t('bg-[#282B30]', 'bg-white', 'bg-pink-100', 'bg-blue-100', 'bg-emerald-100', 'bg-[#EFEBE9]')}`}>
+                                <button onClick={() => setShowCheckout(false)} className="p-1"><Icon name="arrow-left" /></button>
+                                <h2 className={`font-black text-sm uppercase tracking-wider ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>СПОСОБ ПОЛУЧЕНИЯ</h2>
+                            </div>
+                            
+                            <div className="p-4 flex-1 overflow-y-auto" style={{ paddingBottom: '160px' }}>
+                                <div className="text-xs font-black tracking-widest opacity-50 mb-4 mt-2">ЛОГИСТИКА ЗАЯВКИ</div>
+                                
+                                <div className="space-y-3">
+                                    <div onClick={() => setDeliveryMethod('Самовывоз')} className={`p-4 rounded border-2 cursor-pointer flex items-center ${deliveryMethod === 'Самовывоз' ? t('bg-[#33363B] border-[#FFB300]', 'bg-amber-50 border-amber-600', 'bg-pink-100 border-pink-500', 'bg-blue-100 border-blue-600', 'bg-emerald-100 border-emerald-600', 'bg-[#EFEBE9] border-[#8D6E63]') : t('bg-[#212428] border-[#3A3D42]', 'bg-white border-gray-200', 'bg-white border-pink-200', 'bg-white border-blue-200', 'bg-white border-emerald-200', 'bg-white border-[#D7CCC8]')}`}>
+                                        <Icon name="package" className={`mr-4 ${deliveryMethod === 'Самовывоз' ? t('text-[#FFB300]', 'text-amber-700', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#6D4C41]') : 'text-gray-500'}`} size={32} />
+                                        <div className="flex-1">
+                                            <div className={`font-black text-sm tracking-wide ${deliveryMethod === 'Самовывоз' ? t('text-white', 'text-amber-900', 'text-pink-900', 'text-blue-950', 'text-emerald-950', 'text-[#3E2723]') : 'text-gray-500'}`}>САМОВЫВОЗ СО СКЛАДА</div>
+                                            <div className="text-xs opacity-60 mt-1">Получение оборудования инженером лично</div>
+                                        </div>
+                                        {deliveryMethod === 'Самовывоз' && <Icon name="check-circle-2" className={t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')} />}
+                                    </div>
+
+                                    <div onClick={() => setDeliveryMethod('Доставка')} className={`p-4 rounded border-2 cursor-pointer flex items-center ${deliveryMethod === 'Доставка' ? t('bg-[#33363B] border-[#FFB300]', 'bg-amber-50 border-amber-600', 'bg-pink-100 border-pink-500', 'bg-blue-100 border-blue-600', 'bg-emerald-100 border-emerald-600', 'bg-[#EFEBE9] border-[#8D6E63]') : t('bg-[#212428] border-[#3A3D42]', 'bg-white border-gray-200', 'bg-white border-pink-200', 'bg-white border-blue-200', 'bg-white border-emerald-200', 'bg-white border-[#D7CCC8]')}`}>
+                                        <Icon name="truck" className={`mr-4 ${deliveryMethod === 'Доставка' ? t('text-[#FFB300]', 'text-amber-700', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#6D4C41]') : 'text-gray-500'}`} size={32} />
+                                        <div className="flex-1">
+                                            <div className={`font-black text-sm tracking-wide ${deliveryMethod === 'Доставка' ? t('text-white', 'text-amber-900', 'text-pink-900', 'text-blue-950', 'text-emerald-950', 'text-[#3E2723]') : 'text-gray-500'}`}>ДОСТАВКА В ПВЗ DPD</div>
+                                            <div className="text-xs opacity-60 mt-1">Отправка в пункт выдачи</div>
+                                        </div>
+                                        {deliveryMethod === 'Доставка' && <Icon name="check-circle-2" className={t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')} />}
+                                    </div>
+                                </div>
+
+                                {deliveryMethod === 'Доставка' && (
+                                    <div className="mt-6 border-t border-dashed border-gray-500/50 pt-4">
+                                        <div className="text-xs font-black tracking-widest opacity-50 mb-3">ДАННЫЕ ПОЛУЧАТЕЛЯ</div>
+                                        <div className={`p-4 rounded border flex flex-col space-y-2 text-sm ${t('bg-[#212428] border-[#3A3D42]', 'bg-white border-gray-200', 'bg-white border-pink-200', 'bg-white border-blue-200', 'bg-white border-emerald-200', 'bg-white border-[#D7CCC8]')}`}>
+                                            <div className="flex justify-between items-center"><span className="opacity-60">Имя:</span> <span className="font-bold text-right ml-4">{userProfile.name || 'Не указано'}</span></div>
+                                            <div className="flex justify-between items-center"><span className="opacity-60">Телефон:</span> <span className="font-bold text-right ml-4">{userProfile.phone || 'Не указано'}</span></div>
+                                            <div className="flex justify-between items-center"><span className="opacity-60">Адрес (DPD):</span> <span className="font-bold text-right ml-4">{userProfile.address || 'Не указано'}</span></div>
+                                            {(!userProfile.name || !userProfile.phone) && (
+                                                <button onClick={() => { setShowCheckout(false); setShowProfile(true); }} className={`mt-3 text-xs font-bold text-center hover:underline ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-700', 'text-[#6D4C41]')}`}>
+                                                    + Заполнить данные в профиле
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    let fullText = deliveryMethod === 'Самовывоз' 
+                                        ? 'Пополнить склад просьба собрать на самовывоз:\n\n'
+                                        : `Пополнить склад - просьба отправить DPD ${userProfile.address || '[адрес]'} ${userProfile.name || '[фио]'} ${userProfile.phone || '[телефон]'}:\n\n`;
+                                    
+                                    fullText += cart.map(c => `${c.equipment.id} - ${c.equipment.name} x ${c.quantity}шт.`).join('\n');
+                                    
+                                    setPendingOrder({ items: JSON.parse(JSON.stringify(cart)), deliveryMethod, text: fullText });
+                                    setCurrentOrderSaved(false);
+                                    setOrderText(fullText);
+                                    setShowSuccessModal(true);
+                                }} 
+                                className={`fixed left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-md py-4 rounded-xl text-sm font-black tracking-widest shadow-2xl border-2 z-[60] transition-all ${t('bg-[#FFB300] border-[#FFB300] text-black', 'bg-amber-600 border-amber-700 text-white', 'bg-pink-500 border-pink-600 text-white', 'bg-blue-600 border-blue-700 text-white', 'bg-emerald-600 border-emerald-700 text-white', 'bg-[#6D4C41] border-[#5D4037] text-white', 'bg-[#C62828] border-[#B71C1C] text-white hover:bg-[#B71C1C]')}`}
+                                style={{ bottom: 'calc(90px + env(safe-area-inset-bottom, 16px))' }}
+                            >
+                                ОТПРАВИТЬ ЗАЯВКУ НА СКЛАД
+                            </button>
+                        </div>
+                    )}
+
+                    {showSuccessModal && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                            <div className={`w-full max-w-sm rounded border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-white border-[#8D6E63]')} p-5 shadow-2xl flex flex-col max-h-[90vh] animate-fade-in`}>
+                                <div className="flex items-center mb-4">
+                                    <Icon name="check-circle" size={24} className={`mr-2 ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')}`} />
+                                    <h3 className={`text-lg font-black tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>ЗАЯВКА СФОРМИРОВАНА</h3>
+                                </div>
+                                
+                                <textarea 
+                                    readOnly 
+                                    value={orderText}
+                                    className={`w-full flex-1 p-3 text-[11px] font-mono rounded border resize-none mb-4 focus:outline-none ${t('bg-[#1E2125] border-gray-700 text-gray-300', 'bg-gray-50 border-gray-300 text-gray-800', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-[#EFEBE9] border-[#D7CCC8] text-[#3E2723]')}`}
+                                    style={{ minHeight: '150px' }}
+                                />
+
+                                <div className="space-y-2">
+                                    <button 
+                                        onClick={() => {
+                                            handleCopyOrder();
+                                            commitOrderToHistory();
+                                        }} 
+                                        className={`w-full py-3.5 rounded-lg font-black text-xs tracking-wider flex items-center justify-center shadow-md transition-all active:scale-[0.99] ${copied ? 'bg-green-600 text-white' : t('bg-[#FFB300] text-black hover:bg-[#FFA000]', 'bg-amber-600 text-white hover:bg-amber-700', 'bg-pink-500 text-white hover:bg-pink-600', 'bg-blue-600 text-white hover:bg-blue-700', 'bg-emerald-600 text-white hover:bg-emerald-700', 'bg-[#6D4C41] text-white hover:bg-[#5D4037]', 'bg-[#C62828] text-white hover:bg-[#B71C1C] shadow-[#C62828]/20')}`}
+                                    >
+                                        <Icon name={copied ? "check" : "copy"} size={16} className="mr-2" /> 
+                                        {copied ? 'СКОПИРОВАНО!' : 'СКОПИРОВАТЬ СПИСОК'}
+                                    </button>
+
+                                    <button onClick={() => {
+                                        handleCopyOrder();
+                                        commitOrderToHistory();
+                                        window.open('https://t.me/test_gulf_confluence_bot', '_blank');
+                                    }} className="w-full py-3 rounded text-xs font-black tracking-widest flex items-center justify-center bg-[#2AABEE] text-white shadow-lg shadow-[#2AABEE]/20">
+                                        <Icon name="send" size={16} className="mr-2" /> СКОПИРОВАТЬ И ОТПРАВИТЬ В TG
+                                    </button>
+
+                                    <button onClick={() => { setShowSuccessModal(false); setShowCheckout(false); }} className="w-full py-2 mt-2 text-xs font-bold text-gray-500 hover:text-gray-400 tracking-widest">
+                                        ЗАКРЫТЬ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                            <div className={`w-full max-w-sm rounded border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-white border-[#8D6E63]')} p-5`}>
+                                <h3 className={`text-lg font-black mb-5 ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>НАСТРОЙКИ</h3>
+                                
+                                <div className={`p-3 rounded border flex justify-between items-center mb-3 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-300', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
+                                    <span className="text-xs font-bold">Мой аккаунт</span>
+                                    <button onClick={() => { setShowSettings(false); setShowProfile(true); }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white hover:bg-[#B71C1C]')}`}>
+                                        <Icon name="user" size={14} className="mr-1.5" /> ОТКРЫТЬ
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={() => { setShowSettings(false); setShowHistoryModal(true); }}
+                                    className={`w-full p-3 rounded-lg border flex items-center justify-between transition-all mb-3 ${t('bg-[#1E2125] border-[#3A3D42] hover:border-[#FFB300]', 'bg-gray-50 border-gray-200 hover:border-amber-600', 'bg-pink-50/50 border-pink-200', 'bg-blue-50/50 border-blue-200', 'bg-emerald-50/50 border-emerald-200', 'bg-[#F5F2EE] border-[#D7CCC8]')}`}
+                                >
+                                    <div className="flex items-center space-x-2.5">
+                                        <Icon name="history" size={18} className={t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')} />
+                                        <span className="text-xs font-bold">История заказов</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {orderHistory.length > 0 && (
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white')}`}>
+                                                {orderHistory.length}
+                                            </span>
+                                        )}
+                                        <Icon name="chevron-right" size={16} className="opacity-50" />
+                                    </div>
+                                </button>
+
+                                <div className={`p-3 rounded border flex justify-between items-center mb-3 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-300', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
+                                    <span className="text-xs font-bold">Тема оформления</span>
+                                    <button onClick={() => {
+                                        const themes = ['expert', 'dark', 'light', 'pink', 'marine', 'mint', 'coffee'];
+                                        const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
+                                        setTheme(themes[nextIdx]);
+                                    }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${theme === 'expert' ? 'bg-[#D32F2F] text-white' : t('bg-[#FFB300] text-black', 'bg-black text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white')}`}>
+                                        <Icon name="palette" size={14} className="mr-1.5" />
+                                        {theme === 'expert' ? 'ЭКСПЕРТ' : theme === 'dark' ? 'ТЕМНАЯ' : theme === 'light' ? 'СВЕТЛАЯ' : theme === 'pink' ? 'РОЗОВАЯ' : theme === 'marine' ? 'МОРСКАЯ' : theme === 'mint' ? 'МЯТНАЯ' : 'КОФЕЙНАЯ'}
+                                    </button>
+                                </div>
+
+                                <div className={`p-3 rounded border flex justify-between items-center mb-3 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-300', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
+                                    <span className="text-xs font-bold pr-2">Режим редактирования</span>
+                                    <button onClick={() => setIsEditMode(!isEditMode)} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${isEditMode ? t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white hover:bg-[#B71C1C]') : 'bg-gray-500 text-white'}`}>
+                                        <Icon name={isEditMode ? "pencil" : "lock"} size={14} className="mr-1.5" />
+                                        {isEditMode ? 'ВКЛ' : 'ВЫКЛ'}
+                                    </button>
+                                </div>
+
+                                <label className={`w-full p-3 rounded-lg border border-dashed flex items-center justify-center space-x-2 cursor-pointer text-xs font-bold transition-all mb-3 ${t('bg-[#1E2125] border-[#FFB300]/50 text-[#FFB300] hover:bg-[#282B30]', 'bg-amber-50 border-amber-400 text-amber-900', 'bg-pink-50 border-pink-300 text-pink-700', 'bg-blue-50 border-blue-300 text-blue-700', 'bg-emerald-50 border-emerald-300 text-emerald-800', 'bg-[#F5F2EE] border-[#8D6E63] text-[#5D4037]', 'bg-[#FCE8E8] border-[#C62828] text-[#9A1B24] hover:bg-[#F8CACA]')}`}>
+                                    <Icon name="upload" size={16} />
+                                    <span>Обновить прайс из Excel (.xls / .xlsx)</span>
+                                    <input type="file" accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
+                                </label>
+
+                                <a
+                                    href="https://t.me/+79037244714"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`p-3 rounded-lg border flex items-center justify-between transition-opacity hover:opacity-100 opacity-85 mb-2 ${t('bg-[#1E2125] border-[#3A3D42]', 'bg-gray-50 border-gray-200', 'bg-pink-50/50 border-pink-200', 'bg-blue-50/50 border-blue-200', 'bg-emerald-50/50 border-emerald-200', 'bg-[#F5F2EE] border-[#D7CCC8]')}`}
+                                >
+                                    <span className="text-xs font-bold">Написать в поддержку</span>
+                                    <span className="px-2.5 py-1 rounded text-xs font-bold flex items-center space-x-1.5 bg-[#2AABEE]/15 text-[#2AABEE] border border-[#2AABEE]/30">
+                                        <Icon name="send" size={13} />
+                                        <span>Telegram</span>
+                                    </span>
+                                </a>
+
+                                <div className="pt-2 text-center font-mono text-[11px] opacity-50">
+                                    Версия приложения: v{APP_VERSION}
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <button onClick={() => setShowSettings(false)} className={`px-5 py-2 text-sm font-black rounded ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white hover:bg-[#B71C1C]')}`}>
+                                        ЗАКРЫТЬ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showCallModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                            <div className={`w-full max-w-sm rounded-lg border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-[#FDFBF7] border-[#8D6E63]')} p-5 shadow-2xl animate-fade-in`}>
+                                <div className="flex items-center mb-4">
+                                    <Icon name="phone" size={22} className={`mr-2 ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]')}`} />
+                                    <h3 className={`text-lg font-black tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>ПОЗВОНИТЬ НА СКЛАД</h3>
+                                </div>
+                                <p className="text-xs font-bold opacity-60 mb-2 tracking-widest">Позвонить по номеру:</p>
+                                <div className={`text-center py-4 mb-5 rounded-lg border ${t('bg-[#1E2125] border-[#FFB300]/30', 'bg-gray-50 border-gray-200', 'bg-pink-50 border-pink-200', 'bg-blue-50 border-blue-200', 'bg-emerald-50 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
+                                    <span className={`text-2xl font-black font-mono tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-700', 'text-emerald-700', 'text-[#4E342E]')}`}>+7 (919) 960-39-48</span>
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button
+                                        onClick={() => setShowCallModal(false)}
+                                        className={`flex-1 py-3 rounded text-xs font-black tracking-widest border ${t('border-gray-600 text-gray-400 hover:bg-gray-700', 'border-gray-300 text-gray-500 hover:bg-gray-100', 'border-pink-200 text-pink-400 hover:bg-pink-50', 'border-blue-200 text-blue-400 hover:bg-blue-50', 'border-emerald-200 text-emerald-500 hover:bg-emerald-50', 'border-[#D7CCC8] text-[#A1887F] hover:bg-[#EFEBE9]')}`}
+                                    >
+                                        ОТМЕНА
+                                    </button>
+                                    <a
+                                        href="tel:89199603948"
+                                        onClick={() => setShowCallModal(false)}
+                                        className={`flex-1 py-3 rounded text-xs font-black tracking-widest flex items-center justify-center text-white shadow-lg ${t('bg-[#FFB300] text-black shadow-[#FFB300]/30', 'bg-amber-600 shadow-amber-600/30', 'bg-pink-500 shadow-pink-500/30', 'bg-blue-600 shadow-blue-600/30', 'bg-emerald-600 shadow-emerald-600/30', 'bg-[#6D4C41] shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}
+                                    >
+                                        <Icon name="phone-call" size={14} className="mr-2" />
+                                        ПОЗВОНИТЬ
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showProfile && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                            <div className={`w-full max-w-sm rounded border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-white border-[#8D6E63]')} p-5 shadow-2xl`}>
+                                <div className="flex items-center mb-5">
+                                    <button onClick={() => { setShowProfile(false); setShowSettings(true); }} className={`mr-3 p-1 rounded-full ${t('hover:bg-gray-700', 'hover:bg-gray-200', 'hover:bg-pink-100', 'hover:bg-blue-100', 'hover:bg-emerald-100', 'hover:bg-[#D7CCC8]')}`}>
+                                        <Icon name="arrow-left" size={20} className={t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')} />
+                                    </button>
+                                    <h3 className={`text-lg font-black tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]')}`}>МОЙ АККАУНТ</h3>
+                                </div>
+                                
+                                <div className="space-y-4 mb-6">
+                                    <div>
+                                        <label className="text-xs font-bold mb-1 block opacity-70">ФИО / Имя:</label>
+                                        <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.name} onChange={e => setUserProfile({...userProfile, name: e.target.value})} placeholder="Иванов Иван" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold mb-1 block opacity-70">Номер телефона:</label>
+                                        <input type="tel" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.phone} onChange={e => setUserProfile({...userProfile, phone: e.target.value})} placeholder="+7 (999) 000-00-00" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold mb-1 block opacity-70">Адрес DPD для доставки:</label>
+                                        <textarea className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors resize-none ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} rows="3" value={userProfile.address} onChange={e => setUserProfile({...userProfile, address: e.target.value})} placeholder="г. Москва, ул. Примерная, д. 1, ПВЗ DPD"></textarea>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button onClick={() => { showToast('Данные аккаунта сохранены'); setShowProfile(false); }} className={`px-5 py-3 w-full text-sm font-black tracking-widest rounded ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}>СОХРАНИТЬ ДАННЫЕ</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showHistoryModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                            <div className={`w-full max-w-md rounded-xl border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-[#FDFBF7] border-[#8D6E63]', 'bg-white border-[#C62828]')} p-5 shadow-2xl flex flex-col max-h-[90vh]`}>
+                                <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                                    <div className="flex items-center space-x-2.5">
+                                        <button onClick={() => { setShowHistoryModal(false); setShowSettings(true); }} className={`p-1.5 rounded-full transition-colors ${t('hover:bg-gray-700', 'hover:bg-gray-200', 'hover:bg-pink-100', 'hover:bg-blue-100', 'hover:bg-emerald-100', 'hover:bg-[#D7CCC8]', 'hover:bg-red-50')}`}>
+                                            <Icon name="arrow-left" size={20} className={t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')} />
+                                        </button>
+                                        <h3 className={`text-base font-black tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>ИСТОРИЯ ЗАКАЗОВ</h3>
+                                    </div>
+                                    <button onClick={() => setShowHistoryModal(false)} className="p-1.5 opacity-70 hover:opacity-100">
+                                        <Icon name="x" size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto space-y-3 pr-1 hide-scrollbar">
+                                    {orderHistory.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-12 text-center opacity-50">
+                                            <Icon name="history" size={48} className="mb-3" />
+                                            <span className="font-bold text-sm tracking-wide">История заказов пуста</span>
+                                        </div>
+                                    ) : (
+                                        orderHistory.map((order, idx) => {
+                                            const orderNum = order.orderNumber || (orderHistory.length - idx);
+                                            const isConfirming = confirmDeleteOrderId === order.id;
+                                            return (
+                                                <div key={order.id} className={`p-3.5 rounded-lg border flex flex-col space-y-2.5 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-200', 'bg-pink-50 border-pink-200', 'bg-blue-50 border-blue-200', 'bg-emerald-50 border-emerald-200', 'bg-white border-[#D7CCC8]', 'bg-[#F9FAFB] border-gray-200')}`}>
+                                                    <div className="flex justify-between items-start text-xs">
+                                                        <div className={`font-black text-sm tracking-wide ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-700', 'text-emerald-800', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>
+                                                            ЗАКАЗ №{orderNum}
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="text-[11px] opacity-60 font-mono">{order.date}</span>
+                                                            {order.deliveryMethod && (
+                                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest ${t('bg-[#33363B] text-[#FFB300]', 'bg-amber-100 text-amber-800', 'bg-pink-200 text-pink-800', 'bg-blue-200 text-blue-800', 'bg-emerald-200 text-emerald-900', 'bg-[#D7CCC8] text-[#3E2723]', 'bg-red-100 text-[#9A1B24]')}`}>
+                                                                    {order.deliveryMethod.toUpperCase()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-[11px] opacity-80 space-y-0.5 font-mono max-h-28 overflow-y-auto pr-1">
+                                                        {(order.items || []).map((it, i) => {
+                                                            const id = it.equipment ? it.equipment.id : it.id;
+                                                            const name = it.equipment ? it.equipment.name : it.name;
+                                                            return (
+                                                                <div key={i} className="truncate">
+                                                                    {id} — {name} × {it.quantity} шт.
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <div className="flex items-center justify-end space-x-2 pt-1 border-t border-gray-500/20">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (isConfirming) {
+                                                                    setOrderHistory(prev => prev.filter(o => o.id !== order.id));
+                                                                    setConfirmDeleteOrderId(null);
+                                                                    showToast('Заказ удален из истории');
+                                                                } else {
+                                                                    setConfirmDeleteOrderId(order.id);
+                                                                    setTimeout(() => setConfirmDeleteOrderId(null), 3000);
+                                                                }
+                                                            }}
+                                                            className={`px-2.5 py-1.5 rounded text-xs font-bold flex items-center transition-all ${isConfirming ? 'bg-red-600 text-white animate-pulse' : 'text-red-500 hover:bg-red-500/10'}`}
+                                                            title="Удалить заказ"
+                                                        >
+                                                            <Icon name="trash-2" size={14} className="mr-1" />
+                                                            <span>{isConfirming ? 'ТОЧНО?' : 'УДАЛИТЬ'}</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setCart(JSON.parse(JSON.stringify(order.items || [])));
+                                                                setShowHistoryModal(false);
+                                                                setShowCart(true);
+                                                                showToast(`Заказ №${orderNum} загружен в корзину`);
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded text-xs font-black tracking-wider flex items-center shadow transition-all active:scale-95 ${t('bg-[#FFB300] text-black hover:bg-[#FFA000]', 'bg-amber-600 text-white hover:bg-amber-700', 'bg-pink-500 text-white hover:bg-pink-600', 'bg-blue-600 text-white hover:bg-blue-700', 'bg-emerald-600 text-white hover:bg-emerald-700', 'bg-[#6D4C41] text-white hover:bg-[#5D4037]', 'bg-[#C62828] text-white hover:bg-[#B71C1C]')}`}
+                                                        >
+                                                            <Icon name="rotate-ccw" size={13} className="mr-1.5" />
+                                                            <span>ПОВТОРИТЬ ЗАКАЗ</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

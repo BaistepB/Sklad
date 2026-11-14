@@ -1,0 +1,16 @@
+{
+  "name": "Складской учет оборудования",
+  "short_name": "Склад Эксперт",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101112",
+  "theme_color": "#5A1017",
+  "icons": [
+    {
+      "src": "LogoExpert.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
