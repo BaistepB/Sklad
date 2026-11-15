@@ -157,7 +157,7 @@
             { id: 'ТМ-2359', name: 'Универсальный передатчик Dahua', price: '4490р.', manufacturer: 'Dahua', category: 'Разное' },
             { id: 'ТМ-2356', name: 'Ретранслятор Dahua', price: '5990р.', manufacturer: 'Dahua', category: 'Разное' },
             { id: 'ТМ-8287', name: 'Ретранслятор Dahua ( ДДФ и УДДФ)', price: '17280р.', manufacturer: 'Dahua', category: 'Разное' },
-            { id: 'ТМ-9745', name: 'Домашняя сирена Dahua', price: '5490р.', manufacturer: 'Dahua', category: 'Разное' },
+            { id: 'ТМ-9745', name: 'Домашняя сирена Dahua', price: '2990р.', manufacturer: 'Dahua', category: 'Разное' },
             { id: 'ТМ-9846', name: 'Ремешок для тревожной кнопки Dahua', price: '200р.', manufacturer: 'Dahua', category: 'Разное' },
             { id: 'ТМ-9848', name: 'Настенное крепление для тревожной кнопки Dahua', price: '200р.', manufacturer: 'Dahua', category: 'Разное' },
             { id: 'ТМ-4188', name: 'Контр. панель Mega Fire v.4 LTE + радио м. RITM', price: '16700р.', manufacturer: 'RITM', category: 'Базовый комплект' },
@@ -234,7 +234,7 @@
             { id: 'МАТ-009421', name: 'Табличка КТ ГОЛЬФСТРИМ МСК', price: '0р.', manufacturer: 'Прочее', category: 'Наклейки' },
 
             // Прочее — Остальное оборудование
-            { id: 'ТМ-6663', name: 'Сейф-бокс', price: '3 490р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
+            { id: 'ТМ-6663', name: 'Сейф-бокс', price: '1990р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
             { id: 'ТМ-0976', name: 'Шнур 3м с вилкой ПВС ВП 3х0,75 мм (белый)', price: '133.64р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
             { id: 'ТМ-9592', name: 'SKYWAY Кабель usb-type-c в оплетке 2м(для РИТМа)', price: '237.53р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
             { id: 'ТМ-4504', name: 'ИО 101-1(В) (КНС-1В), изв.охранный руч точ/ТМ-3596', price: '1 900р.', manufacturer: 'Прочее', category: 'Остальное оборудование' },
@@ -498,7 +498,8 @@
             );
         };
 
-        const APP_VERSION = '1.1.0';
+        const APP_VERSION = '1.2.1';
+        const PRICE_UPDATE_ID = 'price_v1';
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_B5FydAIcFH4sU5shUgvsjMjNQNcd-_UCLynNewnb7D2Wiz74MDuX9CUzq0F5Lj8/exec';
 
         const App = () => {
@@ -590,6 +591,22 @@
             const [showAuthModal, setShowAuthModal] = useState(() => !isAuthVerified);
             const [authError, setAuthError] = useState('');
 
+            useEffect(() => {
+                const updatedIds = ['ТМ-9745', 'ТМ-6663']; // список обновленных ТМ
+                if (localStorage.getItem('sklad_price_ver') !== PRICE_UPDATE_ID) {
+                    setCatalogEdits(prev => {
+                        const next = { ...prev };
+                        updatedIds.forEach(id => delete next[id]);
+                        return next;
+                    });
+                    setCatalog(prev => prev.map(item => {
+                        const base = initialCatalog.find(b => b.id === item.id);
+                        return (base && updatedIds.includes(item.id)) ? { ...item, price: base.price } : item;
+                    }));
+                    localStorage.setItem('sklad_price_ver', PRICE_UPDATE_ID);
+                }
+            }, []);
+
             useEffect(() => { localStorage.setItem('sklad_theme', theme); }, [theme]);
             useEffect(() => { localStorage.setItem('sklad_favorites', JSON.stringify(favorites)); }, [favorites]);
             useEffect(() => { localStorage.setItem('sklad_custom_items', JSON.stringify(customItems)); }, [customItems]);
@@ -679,13 +696,15 @@
                         if (Array.isArray(d.favorites)) setFavorites(d.favorites);
                         if (Array.isArray(d.customItems)) setCustomItems(d.customItems);
                         if (d.catalogEdits) {
-                            setCatalogEdits(d.catalogEdits);
+                            const cleanedEdits = { ...d.catalogEdits };
+                            ['ТМ-9745', 'ТМ-6663'].forEach(id => delete cleanedEdits[id]);
+                            setCatalogEdits(cleanedEdits);
                             const del = Array.isArray(d.deletedCatalogIds) ? d.deletedCatalogIds : [];
                             setDeletedCatalogIds(del);
                             setCatalog(
                                 initialCatalog
                                     .filter(item => !del.includes(item.id))
-                                    .map(item => d.catalogEdits[item.id] ? { ...item, ...d.catalogEdits[item.id] } : item)
+                                    .map(item => cleanedEdits[item.id] ? { ...item, ...cleanedEdits[item.id] } : item)
                             );
                         }
                         if (d.userProfile) {
