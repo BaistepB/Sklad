@@ -532,6 +532,7 @@
             const [confirmClearCart, setConfirmClearCart] = useState(false);
             const [isSyncing, setIsSyncing] = useState(false);
             const lastCheckedPhoneRef = useRef('');
+            const [phoneError, setPhoneError] = useState('');
 
             useEffect(() => { localStorage.setItem('sklad_theme', theme); }, [theme]);
             useEffect(() => { localStorage.setItem('sklad_favorites', JSON.stringify(favorites)); }, [favorites]);
@@ -544,6 +545,26 @@
             useEffect(() => { localStorage.setItem('sklad_order_counter', String(orderCounter)); }, [orderCounter]);
 
             const normalizePhone = (ph) => String(ph || '').replace(/\D/g, '').replace(/^8/, '7');
+
+            const formatPhoneMask = (value) => {
+                let digits = String(value || '').replace(/\D/g, '');
+                if (!digits) return '';
+                // Если начали вводить с 8 или 7, заменяем первую цифру на код 7
+                if (digits[0] === '8' || digits[0] === '7') {
+                    digits = '7' + digits.slice(1);
+                } else {
+                    // Если начали вводить сразу с 9 (например, 919...), добавляем в начало 7
+                    digits = '7' + digits;
+                }
+                digits = digits.slice(0, 11); // Строго максимум 11 цифр
+
+                let res = '+7';
+                if (digits.length > 1) res += ' ' + digits.slice(1, 4);
+                if (digits.length > 4) res += ' ' + digits.slice(4, 7);
+                if (digits.length > 7) res += ' ' + digits.slice(7, 9);
+                if (digits.length > 9) res += ' ' + digits.slice(9, 11);
+                return res;
+            };
 
             const syncToCloud = async (extraOrder = null, silent = false) => {
                 const cleanPhone = normalizePhone(userProfile.phone);
@@ -1638,15 +1659,51 @@
                                         <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.name} onChange={e => setUserProfile({...userProfile, name: e.target.value})} placeholder="Иванов Иван" />
                                     </div>
                                     <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-bold block opacity-70">Номер телефона:</label>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className={`text-xs font-bold block ${phoneError ? 'text-red-500' : 'opacity-70'}`}>
+                                                Номер телефона:
+                                            </label>
                                             {isSyncing ? (
-                                                <span className="text-[11px] font-bold text-amber-500 animate-pulse">☁️ Проверка в базе...</span>
+                                                <span className="text-[10px] font-bold opacity-70 animate-pulse">☁️ Проверка в базе...</span>
                                             ) : normalizePhone(userProfile.phone).length === 11 ? (
-                                                <span className="text-[11px] font-bold text-emerald-500">☁️ Синхронизировано</span>
+                                                <span className="text-[10px] font-bold text-emerald-500">☁️ Формат верный</span>
                                             ) : null}
                                         </div>
-                                        <input type="tel" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.phone} onChange={e => setUserProfile({...userProfile, phone: e.target.value})} placeholder="+7 (999) 000-00-00" />
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            maxLength={16}
+                                            className={`w-full p-2 text-[16px] sm:text-sm font-mono rounded border transition-colors ${
+                                                phoneError
+                                                    ? 'border-red-500 ring-2 ring-red-500/40 bg-red-50 text-red-900'
+                                                    : t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')
+                                            }`}
+                                            value={userProfile.phone}
+                                            onFocus={() => {
+                                                if (!userProfile.phone) setUserProfile({ ...userProfile, phone: '+7 ' });
+                                            }}
+                                            onChange={e => {
+                                                const formatted = formatPhoneMask(e.target.value);
+                                                setUserProfile({ ...userProfile, phone: formatted });
+                                                if (phoneError) setPhoneError('');
+                                            }}
+                                            onBlur={() => {
+                                                const clean = normalizePhone(userProfile.phone);
+                                                if (userProfile.phone === '+7 ' || clean.length <= 1) {
+                                                    setUserProfile({ ...userProfile, phone: '' });
+                                                    setPhoneError('');
+                                                } else if (clean.length > 1 && clean.length < 11) {
+                                                    setPhoneError('Введите полный номер в формате +7 ХХХ ХХХ ХХ ХХ');
+                                                }
+                                            }}
+                                            placeholder="+7 999 000 00 00"
+                                        />
+                                        {phoneError && (
+                                            <div className="mt-1.5 text-[11px] font-bold text-red-500 flex items-center">
+                                                <Icon name="alert-triangle" size={13} className="mr-1 flex-shrink-0" />
+                                                <span>{phoneError}</span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold mb-1 block opacity-70">Адрес DPD для доставки:</label>
@@ -1656,9 +1713,17 @@
 
                                 <div className="flex justify-end">
                                     <button 
-                                        onClick={() => { 
+                                        onClick={() => {
+                                            const clean = normalizePhone(userProfile.phone);
+                                            if (clean.length > 0 && clean.length !== 11) {
+                                                setPhoneError('Номер должен содержать 11 цифр (+7 ХХХ ХХХ ХХ ХХ)');
+                                                showToast('Проверьте правильность номера телефона');
+                                                return;
+                                            }
+                                            setPhoneError('');
                                             syncToCloud(null, false);
-                                            setShowProfile(false); 
+                                            showToast('Данные аккаунта сохранены');
+                                            setShowProfile(false);
                                         }} 
                                         disabled={isSyncing}
                                         className={`px-5 py-3 w-full text-sm font-black tracking-widest rounded flex items-center justify-center transition-all ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''} ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}
