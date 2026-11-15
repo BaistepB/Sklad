@@ -458,7 +458,7 @@
         };
 
         const APP_VERSION = '1.1.0';
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGaH1MZhZ4cfXL0OjUFSL_TFkkHdw3WAtoWrI_-SE7PPoe2LAjpn8w0wt0-V3FBsLD/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_B5FydAIcFH4sU5shUgvsjMjNQNcd-_UCLynNewnb7D2Wiz74MDuX9CUzq0F5Lj8/exec';
 
         const App = () => {
             const [theme, setTheme] = useState(() => localStorage.getItem('sklad_theme') || 'expert');
@@ -487,8 +487,11 @@
                 try { return JSON.parse(localStorage.getItem('sklad_cart') || '[]'); } catch { return []; }
             });
             const [userProfile, setUserProfile] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('sklad_profile') || '{"name":"","phone":"","address":""}'); }
-                catch { return { name: '', phone: '', address: '' }; }
+                try { 
+                    const p = JSON.parse(localStorage.getItem('sklad_profile') || '{"name":"","phone":"","address":"","pin":""}');
+                    return { name: p.name || '', phone: p.phone || '', address: p.address || '', pin: p.pin || '' };
+                }
+                catch { return { name: '', phone: '', address: '', pin: '' }; }
             });
             const [orderHistory, setOrderHistory] = useState(() => {
                 try { return JSON.parse(localStorage.getItem('sklad_order_history') || '[]'); } catch { return []; }
@@ -533,6 +536,18 @@
             const [isSyncing, setIsSyncing] = useState(false);
             const lastCheckedPhoneRef = useRef('');
             const [phoneError, setPhoneError] = useState('');
+            const [isAuthVerified, setIsAuthVerified] = useState(() => {
+                try {
+                    const saved = JSON.parse(localStorage.getItem('sklad_profile') || '{}');
+                    const ph = String(saved.phone || '').replace(/\D/g, '');
+                    const pin = String(saved.pin || '').replace(/\D/g, '');
+                    return ph.length === 11 && pin.length === 4 && localStorage.getItem('sklad_auth_verified') === 'true';
+                } catch {
+                    return false;
+                }
+            });
+            const [showAuthModal, setShowAuthModal] = useState(() => !isAuthVerified);
+            const [authError, setAuthError] = useState('');
 
             useEffect(() => { localStorage.setItem('sklad_theme', theme); }, [theme]);
             useEffect(() => { localStorage.setItem('sklad_favorites', JSON.stringify(favorites)); }, [favorites]);
@@ -568,8 +583,9 @@
 
             const syncToCloud = async (extraOrder = null, silent = false) => {
                 const cleanPhone = normalizePhone(userProfile.phone);
-                if (!cleanPhone || cleanPhone.length !== 11 || !GOOGLE_SCRIPT_URL.startsWith('http')) {
-                    if (!silent) showToast('Укажите корректный номер телефона (11 цифр)');
+                const cleanPin = String(userProfile.pin || '').replace(/\D/g, '').slice(0, 4);
+                if (!cleanPhone || cleanPhone.length !== 11 || cleanPin.length !== 4 || !isAuthVerified || !GOOGLE_SCRIPT_URL.startsWith('http')) {
+                    if (!silent) showToast('Укажите корректный номер телефона (11 цифр) и ПИН (4 цифры)');
                     return;
                 }
                 if (!silent) setIsSyncing(true);
@@ -588,7 +604,7 @@
                         method: 'POST',
                         mode: 'no-cors',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ phone: cleanPhone, payload, newOrder: extraOrder })
+                        body: JSON.stringify({ phone: cleanPhone, pin: cleanPin, payload, newOrder: extraOrder })
                     });
                     if (!silent) showToast('Данные сохранены в облаке ☁️');
                 } catch (e) {
@@ -598,14 +614,24 @@
                 }
             };
 
-            const loadFromCloud = async (phoneToLoad = userProfile.phone, silent = false) => {
+            const loadFromCloud = async (phoneToLoad = userProfile.phone, pinToLoad = userProfile.pin, silent = false) => {
                 const cleanPhone = normalizePhone(phoneToLoad);
-                if (cleanPhone.length !== 11 || !GOOGLE_SCRIPT_URL.startsWith('http')) return;
+                const cleanPin = String(pinToLoad || '').replace(/\D/g, '').slice(0, 4);
+                if (cleanPhone.length !== 11 || cleanPin.length !== 4 || !GOOGLE_SCRIPT_URL.startsWith('http')) return false;
                 setIsSyncing(true);
                 try {
-                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?phone=${encodeURIComponent(cleanPhone)}`);
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?phone=${encodeURIComponent(cleanPhone)}&pin=${encodeURIComponent(cleanPin)}`);
                     const json = await res.json();
-                    lastCheckedPhoneRef.current = cleanPhone;
+
+                    if (json.status === 'wrong_pin') {
+                        setIsAuthVerified(false);
+                        localStorage.removeItem('sklad_auth_verified');
+                        setAuthError('Неверный ПИН-код! Этот номер уже зарегистрирован с другим ПИН-кодом.');
+                        setPhoneError('Неверный ПИН-код для этого номера!');
+                        showToast('❌ Неверный ПИН-код!');
+                        return false;
+                    }
+
                     if (json.status === 'ok' && json.payload) {
                         const d = json.payload;
                         if (d.theme) setTheme(d.theme);
@@ -624,43 +650,67 @@
                         if (d.userProfile) {
                             setUserProfile(prev => ({
                                 name: d.userProfile.name || prev.name,
-                                phone: phoneToLoad,
-                                address: d.userProfile.address || prev.address
+                                phone: formatPhoneMask(phoneToLoad),
+                                address: d.userProfile.address || prev.address,
+                                pin: cleanPin
                             }));
                         }
                         if (Array.isArray(d.orderHistory)) setOrderHistory(d.orderHistory);
                         if (typeof d.orderCounter === 'number') setOrderCounter(d.orderCounter);
-                        showToast('Данные профиля загружены из облака ☁️');
-                    } else if (!silent) {
-                        showToast('Новый номер — данные будут сохранены в облако');
+
+                        lastCheckedPhoneRef.current = `${cleanPhone}_${cleanPin}`;
+                        setIsAuthVerified(true);
+                        localStorage.setItem('sklad_auth_verified', 'true');
+                        setShowAuthModal(false);
+                        setAuthError('');
+                        setPhoneError('');
+                        showToast('Вход выполнен! Данные загружены из облака ☁️');
+                        return true;
                     }
+
+                    if (json.status === 'not_found') {
+                        lastCheckedPhoneRef.current = `${cleanPhone}_${cleanPin}`;
+                        setIsAuthVerified(true);
+                        localStorage.setItem('sklad_auth_verified', 'true');
+                        setShowAuthModal(false);
+                        setAuthError('');
+                        setPhoneError('');
+                        syncToCloud(null, true);
+                        showToast('Аккаунт создан и защищен ПИН-кодом 🔒');
+                        return true;
+                    }
+
+                    return false;
                 } catch (e) {
                     if (!silent) showToast('Нет связи с облаком');
+                    return false;
                 } finally {
                     setIsSyncing(false);
                 }
             };
 
-            // 1. Как только номер телефона достиг 11 цифр (при вводе в профиле или при запуске приложения) — автоматически проверяем и подгружаем данные из Google Таблицы
+            // 1. Автопроверка при вводе 11 цифр телефона И 4 цифр ПИН-кода
             useEffect(() => {
                 const cleanPhone = normalizePhone(userProfile.phone);
-                if (cleanPhone.length === 11 && lastCheckedPhoneRef.current !== cleanPhone) {
+                const cleanPin = String(userProfile.pin || '').replace(/\D/g, '').slice(0, 4);
+                if (cleanPhone.length === 11 && cleanPin.length === 4 && lastCheckedPhoneRef.current !== `${cleanPhone}_${cleanPin}`) {
                     const checkTimer = setTimeout(() => {
-                        loadFromCloud(userProfile.phone, true);
+                        loadFromCloud(userProfile.phone, userProfile.pin, true);
                     }, 400);
                     return () => clearTimeout(checkTimer);
                 }
-            }, [userProfile.phone]);
+            }, [userProfile.phone, userProfile.pin]);
 
-            // 2. Автосохранение изменений в облако (срабатывает ТОЛЬКО после того, как номер из 11 цифр уже был проверен в облаке)
+            // 2. Автосохранение изменений в облако (срабатывает ТОЛЬКО после успешной верификации ПИН-кода)
             useEffect(() => {
                 const cleanPhone = normalizePhone(userProfile.phone);
-                if (cleanPhone.length !== 11 || lastCheckedPhoneRef.current !== cleanPhone) return;
+                const cleanPin = String(userProfile.pin || '').replace(/\D/g, '').slice(0, 4);
+                if (!isAuthVerified || cleanPhone.length !== 11 || cleanPin.length !== 4 || lastCheckedPhoneRef.current !== `${cleanPhone}_${cleanPin}`) return;
                 const syncTimer = setTimeout(() => {
                     syncToCloud(null, true);
                 }, 1500);
                 return () => clearTimeout(syncTimer);
-            }, [favorites, customItems, catalogEdits, deletedCatalogIds, orderHistory, userProfile.name, userProfile.address]);
+            }, [favorites, customItems, catalogEdits, deletedCatalogIds, orderHistory, userProfile.name, userProfile.address, isAuthVerified]);
 
             const commitOrderToHistory = () => {
                 if (currentOrderSaved || !pendingOrder || !pendingOrder.items || pendingOrder.items.length === 0) return;
@@ -1684,13 +1734,17 @@
                                             }}
                                             onChange={e => {
                                                 const formatted = formatPhoneMask(e.target.value);
-                                                setUserProfile({ ...userProfile, phone: formatted });
+                                                setUserProfile(prev => ({ ...prev, phone: formatted }));
                                                 if (phoneError) setPhoneError('');
+                                                if (isAuthVerified) {
+                                                    setIsAuthVerified(false);
+                                                    localStorage.removeItem('sklad_auth_verified');
+                                                }
                                             }}
                                             onBlur={() => {
                                                 const clean = normalizePhone(userProfile.phone);
                                                 if (userProfile.phone === '+7 ' || clean.length <= 1) {
-                                                    setUserProfile({ ...userProfile, phone: '' });
+                                                    setUserProfile(prev => ({ ...prev, phone: '' }));
                                                     setPhoneError('');
                                                 } else if (clean.length > 1 && clean.length < 11) {
                                                     setPhoneError('Введите полный номер в формате +7 ХХХ ХХХ ХХ ХХ');
@@ -1706,18 +1760,50 @@
                                         )}
                                     </div>
                                     <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="text-xs font-bold block opacity-70">
+                                                ПИН-код доступа (4 цифры):
+                                            </label>
+                                            {isAuthVerified && (
+                                                <span className="text-[10px] font-bold text-emerald-500">🔒 Защищен</span>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="password"
+                                            inputMode="numeric"
+                                            maxLength={4}
+                                            value={userProfile.pin || ''}
+                                            onChange={e => {
+                                                const cleanPin = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                setUserProfile(prev => ({ ...prev, pin: cleanPin }));
+                                                if (isAuthVerified) {
+                                                    setIsAuthVerified(false);
+                                                    localStorage.removeItem('sklad_auth_verified');
+                                                }
+                                            }}
+                                            placeholder="••••"
+                                            className={`w-full p-2 text-lg font-mono font-black tracking-[0.5em] text-center rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`}
+                                        />
+                                        <p className="mt-1 text-[10px] opacity-60">Защищает ваш профиль от входа с других устройств.</p>
+                                    </div>
+                                    <div>
                                         <label className="text-xs font-bold mb-1 block opacity-70">Адрес DPD для доставки:</label>
                                         <textarea className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors resize-none ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} rows="3" value={userProfile.address} onChange={e => setUserProfile({...userProfile, address: e.target.value})} placeholder="г. Москва, ул. Примерная, д. 1, ПВЗ DPD"></textarea>
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end">
+                                <div className="flex flex-col space-y-2">
                                     <button 
                                         onClick={() => {
                                             const clean = normalizePhone(userProfile.phone);
+                                            const cleanPin = String(userProfile.pin || '').replace(/\D/g, '');
                                             if (clean.length > 0 && clean.length !== 11) {
                                                 setPhoneError('Номер должен содержать 11 цифр (+7 ХХХ ХХХ ХХ ХХ)');
                                                 showToast('Проверьте правильность номера телефона');
+                                                return;
+                                            }
+                                            if (cleanPin.length > 0 && cleanPin.length !== 4) {
+                                                showToast('ПИН-код должен содержать ровно 4 цифры');
                                                 return;
                                             }
                                             setPhoneError('');
@@ -1729,6 +1815,21 @@
                                         className={`px-5 py-3 w-full text-sm font-black tracking-widest rounded flex items-center justify-center transition-all ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''} ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}
                                     >
                                         {isSyncing ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ ДАННЫЕ'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setUserProfile(prev => ({ ...prev, phone: '', pin: '' }));
+                                            setIsAuthVerified(false);
+                                            localStorage.removeItem('sklad_auth_verified');
+                                            lastCheckedPhoneRef.current = '';
+                                            setShowProfile(false);
+                                            setAuthError('');
+                                            setShowAuthModal(true);
+                                        }}
+                                        className="w-full py-2 text-xs font-bold text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors flex items-center justify-center space-x-1"
+                                    >
+                                        <Icon name="log-out" size={14} className="mr-1" />
+                                        <span>🚪 СМЕНИТЬ АККАУНТ / ВЫЙТИ</span>
                                     </button>
                                 </div>
                             </div>
@@ -1825,6 +1926,106 @@
                                         })
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showAuthModal && (
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+                            <div className={`w-full max-w-sm rounded-xl border-2 ${t('bg-[#282B30] border-[#FFB300]', 'bg-white border-amber-900', 'bg-white border-pink-400', 'bg-white border-blue-600', 'bg-white border-emerald-600', 'bg-[#FDFBF7] border-[#8D6E63]', 'bg-white border-[#C62828]')} p-6 shadow-2xl`}>
+                                <div className="flex items-center space-x-2.5 mb-2">
+                                    <Icon name="shield-check" size={24} className={t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-[#C62828]')} />
+                                    <h3 className={`text-lg font-black tracking-widest ${t('text-[#FFB300]', 'text-amber-900', 'text-pink-600', 'text-blue-600', 'text-emerald-700', 'text-[#5D4037]', 'text-[#9A1B24]')}`}>
+                                        АВТОРИЗАЦИЯ
+                                    </h3>
+                                </div>
+
+                                <p className="text-xs font-bold opacity-75 mb-4">
+                                    Введите номер телефона и 4-значный ПИН-код для доступа к данным:
+                                </p>
+
+                                <div className="space-y-3.5 mb-5">
+                                    <div>
+                                        <label className="text-[11px] font-bold block opacity-70 mb-1">Номер телефона:</label>
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoFocus
+                                            maxLength={16}
+                                            value={userProfile.phone}
+                                            onFocus={() => {
+                                                if (!userProfile.phone) setUserProfile(prev => ({ ...prev, phone: '+7 ' }));
+                                            }}
+                                            onChange={e => {
+                                                const formatted = formatPhoneMask(e.target.value);
+                                                setUserProfile(prev => ({ ...prev, phone: formatted }));
+                                                if (authError) setAuthError('');
+                                            }}
+                                            placeholder="+7 999 000 00 00"
+                                            className={`w-full p-2.5 text-base font-mono font-bold text-center tracking-wider rounded-lg border-2 outline-none transition-all ${
+                                                authError
+                                                    ? 'border-red-500 bg-red-50 text-red-900'
+                                                    : t('bg-[#1E2125] border-gray-700 text-white focus:border-[#FFB300]', 'bg-gray-50 border-gray-300 text-gray-900 focus:border-amber-600', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]', 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#C62828]')
+                                            }`}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[11px] font-bold block opacity-70 mb-1">ПИН-код (4 цифры):</label>
+                                        <input
+                                            type="password"
+                                            inputMode="numeric"
+                                            maxLength={4}
+                                            value={userProfile.pin || ''}
+                                            onChange={e => {
+                                                const cleanPin = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                setUserProfile(prev => ({ ...prev, pin: cleanPin }));
+                                                if (authError) setAuthError('');
+                                            }}
+                                            placeholder="••••"
+                                            className={`w-full p-2.5 text-xl font-mono font-black text-center tracking-[0.5em] rounded-lg border-2 outline-none transition-all ${
+                                                authError
+                                                    ? 'border-red-500 bg-red-50 text-red-900'
+                                                    : t('bg-[#1E2125] border-gray-700 text-white focus:border-[#FFB300]', 'bg-gray-50 border-gray-300 text-gray-900 focus:border-amber-600', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]', 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#C62828]')
+                                            }`}
+                                        />
+                                        <p className="mt-1 text-[10px] opacity-60">Если входите впервые — придумайте любой 4-значный ПИН-код и запомните его.</p>
+                                    </div>
+
+                                    {authError && (
+                                        <div className="p-2.5 rounded-lg bg-red-500/15 border border-red-500/50 text-[11px] font-bold text-red-500 flex items-start space-x-1.5">
+                                            <Icon name="alert-triangle" size={14} className="mr-1 flex-shrink-0 mt-0.5" />
+                                            <span>{authError}</span>
+                                        </div>
+                                    )}
+
+                                    {isSyncing && (
+                                        <div className="text-[11px] font-bold opacity-70 text-center animate-pulse">
+                                            ☁️ Проверка авторизации в облаке...
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        const clean = normalizePhone(userProfile.phone);
+                                        const cleanPin = String(userProfile.pin || '').replace(/\D/g, '');
+                                        if (clean.length !== 11) {
+                                            setAuthError('Введите полный номер в формате +7 ХХХ ХХХ ХХ ХХ');
+                                            return;
+                                        }
+                                        if (cleanPin.length !== 4) {
+                                            setAuthError('Введите 4-значный ПИН-код');
+                                            return;
+                                        }
+                                        setAuthError('');
+                                        loadFromCloud(userProfile.phone, userProfile.pin, false);
+                                    }}
+                                    disabled={isSyncing}
+                                    className={`w-full py-3.5 rounded-lg text-xs font-black tracking-widest shadow-lg transition-all active:scale-95 ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''} ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white', 'bg-[#C62828] text-white hover:bg-[#B71C1C]')}`}
+                                >
+                                    {isSyncing ? 'ПРОВЕРКА...' : 'ВОЙТИ В ПРИЛОЖЕНИЕ'}
+                                </button>
                             </div>
                         </div>
                     )}
