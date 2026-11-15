@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-     <!-- Веб-манифест для PWA и установки на телефон -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Заявка на склад</title>
+
+    <!-- Веб-манифест для PWA и установки на телефон -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- Иконка приложения и настройки полноэкранного режима -->
+
+    <!-- Иконка приложения и настройки полноэкранного режима (PWA) -->
     <link rel="icon" type="image/jpeg" href="LogoExpert.jpg">
     <link rel="apple-touch-icon" href="LogoExpert.jpg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Склад Эксперт">
+    <meta name="apple-mobile-web-app-title" content="Заявка на склад">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#5A1017">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Складской учет оборудования</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -320,9 +321,58 @@
                         .replace(/focus:border-amber-\d+/g, 'focus:border-[#C62828]')
                         .replace(/shadow-amber-\d+\/\d+/g, 'shadow-[#C62828]/30');
                 }
-                if (theme === 'coffee') return coffee;
+                if (theme === 'expert-dark') {
+                    if (dark && dark.includes('bg-[#FFB300]/15')) return dark;
+                    return (dark || light)
+                        // Заливки главных кнопок и бейджей -> фирменный красный с белым текстом
+                        .replace(/bg-\[#FFB300\] text-black/g, 'bg-[#C62828] text-white')
+                        .replace(/bg-\[#FFB300\]\/20/g, 'bg-[#C62828]/25')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828]')
+                        .replace(/hover:bg-\[#FFA000\]/g, 'hover:bg-[#B71C1C]')
+                        // Акцентный текст (заголовки, активные вкладки, артикулы) -> светлый рубиново-коралловый для высокой контрастности на темном фоне
+                        .replace(/text-\[#FFB300\]/g, 'text-[#FF5252]')
+                        // Рамки и кольца фокуса -> рубиновые
+                        .replace(/border-\[#FFB300\]\/50/g, 'border-[#EF4444]/50')
+                        .replace(/border-\[#FFB300\]\/30/g, 'border-[#EF4444]/30')
+                        .replace(/border-\[#FFB300\]/g, 'border-[#C62828]')
+                        .replace(/focus:ring-\[#FFB300\]/g, 'focus:ring-[#EF4444]')
+                        .replace(/shadow-\[#FFB300\]\/\d+/g, 'shadow-[#C62828]/30');
+                }
+                if (theme === 'marine') {
+                    return (marine || dark)
+                        .replace(/bg-blue-50\/50/g, 'bg-[#131D31]')
+                        .replace(/bg-blue-50/g, 'bg-[#0B132B]')
+                        .replace(/bg-blue-100/g, 'bg-[#162238]')
+                        .replace(/bg-blue-200/g, 'bg-[#1E3A5F]')
+                        .replace(/bg-white/g, 'bg-[#162032] text-blue-50')
+                        .replace(/text-blue-950/g, 'text-blue-50')
+                        .replace(/text-blue-900\/60/g, 'text-blue-300/50')
+                        .replace(/text-blue-900/g, 'text-blue-100')
+                        .replace(/text-blue-800/g, 'text-blue-200')
+                        .replace(/text-blue-700/g, 'text-sky-400')
+                        .replace(/text-blue-600/g, 'text-sky-400')
+                        .replace(/border-blue-200/g, 'border-[#253652]')
+                        .replace(/border-blue-300/g, 'border-sky-500/50');
+                }
+                if (theme === 'coffee') {
+                    return (coffee || dark)
+                        .replace(/bg-\[#F5F2EE\]/g, 'bg-[#16110F]')
+                        .replace(/bg-\[#EFEBE9\]/g, 'bg-[#221A17]')
+                        .replace(/bg-\[#FDFBF7\]/g, 'bg-[#241C19] text-[#F5EBE6]')
+                        .replace(/bg-\[#D7CCC8\]\/60/g, 'bg-[#362924]')
+                        .replace(/bg-\[#D7CCC8\]\/40/g, 'bg-[#362924]')
+                        .replace(/bg-\[#D7CCC8\]/g, 'bg-[#382B26]')
+                        .replace(/bg-white/g, 'bg-[#241C19] text-[#F5EBE6]')
+                        .replace(/text-\[#3E2723\]/g, 'text-[#F5EBE6]')
+                        .replace(/text-\[#4E342E\]/g, 'text-[#E6D5CC]')
+                        .replace(/text-\[#5D4037\]/g, 'text-[#D7B399]')
+                        .replace(/text-\[#6D4C41\]\/60/g, 'text-[#A1887F]/60')
+                        .replace(/text-\[#6D4C41\]/g, 'text-[#E0B084]')
+                        .replace(/text-\[#8D6E63\]/g, 'text-[#D7B399]')
+                        .replace(/border-\[#D7CCC8\]/g, 'border-[#3E2F2A]')
+                        .replace(/border-\[#A1887F\]/g, 'border-[#6D4C41]');
+                }
                 if (theme === 'mint') return mint;
-                if (theme === 'marine') return marine;
                 if (theme === 'pink') return pink;
                 if (theme === 'light') return light;
                 return dark;
@@ -408,6 +458,7 @@
         };
 
         const APP_VERSION = '1.1.0';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGaH1MZhZ4cfXL0OjUFSL_TFkkHdw3WAtoWrI_-SE7PPoe2LAjpn8w0wt0-V3FBsLD/exec';
 
         const App = () => {
             const [theme, setTheme] = useState(() => localStorage.getItem('sklad_theme') || 'expert');
@@ -479,6 +530,8 @@
             const [showBrandDropdown, setShowBrandDropdown] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
             const [confirmClearCart, setConfirmClearCart] = useState(false);
+            const [isSyncing, setIsSyncing] = useState(false);
+            const lastCheckedPhoneRef = useRef('');
 
             useEffect(() => { localStorage.setItem('sklad_theme', theme); }, [theme]);
             useEffect(() => { localStorage.setItem('sklad_favorites', JSON.stringify(favorites)); }, [favorites]);
@@ -489,6 +542,104 @@
             useEffect(() => { localStorage.setItem('sklad_profile', JSON.stringify(userProfile)); }, [userProfile]);
             useEffect(() => { localStorage.setItem('sklad_order_history', JSON.stringify(orderHistory)); }, [orderHistory]);
             useEffect(() => { localStorage.setItem('sklad_order_counter', String(orderCounter)); }, [orderCounter]);
+
+            const normalizePhone = (ph) => String(ph || '').replace(/\D/g, '').replace(/^8/, '7');
+
+            const syncToCloud = async (extraOrder = null, silent = false) => {
+                const cleanPhone = normalizePhone(userProfile.phone);
+                if (!cleanPhone || cleanPhone.length !== 11 || !GOOGLE_SCRIPT_URL.startsWith('http')) {
+                    if (!silent) showToast('Укажите корректный номер телефона (11 цифр)');
+                    return;
+                }
+                if (!silent) setIsSyncing(true);
+                try {
+                    const payload = {
+                        theme,
+                        favorites,
+                        customItems,
+                        catalogEdits,
+                        deletedCatalogIds,
+                        userProfile,
+                        orderHistory,
+                        orderCounter
+                    };
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ phone: cleanPhone, payload, newOrder: extraOrder })
+                    });
+                    if (!silent) showToast('Данные сохранены в облаке ☁️');
+                } catch (e) {
+                    if (!silent) showToast('Ошибка связи с облаком');
+                } finally {
+                    if (!silent) setIsSyncing(false);
+                }
+            };
+
+            const loadFromCloud = async (phoneToLoad = userProfile.phone, silent = false) => {
+                const cleanPhone = normalizePhone(phoneToLoad);
+                if (cleanPhone.length !== 11 || !GOOGLE_SCRIPT_URL.startsWith('http')) return;
+                setIsSyncing(true);
+                try {
+                    const res = await fetch(`${GOOGLE_SCRIPT_URL}?phone=${encodeURIComponent(cleanPhone)}`);
+                    const json = await res.json();
+                    lastCheckedPhoneRef.current = cleanPhone;
+                    if (json.status === 'ok' && json.payload) {
+                        const d = json.payload;
+                        if (d.theme) setTheme(d.theme);
+                        if (Array.isArray(d.favorites)) setFavorites(d.favorites);
+                        if (Array.isArray(d.customItems)) setCustomItems(d.customItems);
+                        if (d.catalogEdits) {
+                            setCatalogEdits(d.catalogEdits);
+                            const del = Array.isArray(d.deletedCatalogIds) ? d.deletedCatalogIds : [];
+                            setDeletedCatalogIds(del);
+                            setCatalog(
+                                initialCatalog
+                                    .filter(item => !del.includes(item.id))
+                                    .map(item => d.catalogEdits[item.id] ? { ...item, ...d.catalogEdits[item.id] } : item)
+                            );
+                        }
+                        if (d.userProfile) {
+                            setUserProfile(prev => ({
+                                name: d.userProfile.name || prev.name,
+                                phone: phoneToLoad,
+                                address: d.userProfile.address || prev.address
+                            }));
+                        }
+                        if (Array.isArray(d.orderHistory)) setOrderHistory(d.orderHistory);
+                        if (typeof d.orderCounter === 'number') setOrderCounter(d.orderCounter);
+                        showToast('Данные профиля загружены из облака ☁️');
+                    } else if (!silent) {
+                        showToast('Новый номер — данные будут сохранены в облако');
+                    }
+                } catch (e) {
+                    if (!silent) showToast('Нет связи с облаком');
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
+
+            // 1. Как только номер телефона достиг 11 цифр (при вводе в профиле или при запуске приложения) — автоматически проверяем и подгружаем данные из Google Таблицы
+            useEffect(() => {
+                const cleanPhone = normalizePhone(userProfile.phone);
+                if (cleanPhone.length === 11 && lastCheckedPhoneRef.current !== cleanPhone) {
+                    const checkTimer = setTimeout(() => {
+                        loadFromCloud(userProfile.phone, true);
+                    }, 400);
+                    return () => clearTimeout(checkTimer);
+                }
+            }, [userProfile.phone]);
+
+            // 2. Автосохранение изменений в облако (срабатывает ТОЛЬКО после того, как номер из 11 цифр уже был проверен в облаке)
+            useEffect(() => {
+                const cleanPhone = normalizePhone(userProfile.phone);
+                if (cleanPhone.length !== 11 || lastCheckedPhoneRef.current !== cleanPhone) return;
+                const syncTimer = setTimeout(() => {
+                    syncToCloud(null, true);
+                }, 1500);
+                return () => clearTimeout(syncTimer);
+            }, [favorites, customItems, catalogEdits, deletedCatalogIds, orderHistory, userProfile.name, userProfile.address]);
 
             const commitOrderToHistory = () => {
                 if (currentOrderSaved || !pendingOrder || !pendingOrder.items || pendingOrder.items.length === 0) return;
@@ -507,6 +658,7 @@
                 setOrderHistory(prev => [newOrder, ...prev]);
                 setCurrentOrderSaved(true);
                 setCart([]);
+                syncToCloud(newOrder, true);
             };
 
             const handleExcelUpload = (e) => {
@@ -639,9 +791,58 @@
                         .replace(/focus:border-amber-\d+/g, 'focus:border-[#C62828]')
                         .replace(/shadow-amber-\d+\/\d+/g, 'shadow-[#C62828]/30');
                 }
-                if (theme === 'coffee') return coffee;
+                if (theme === 'expert-dark') {
+                    if (dark && dark.includes('bg-[#FFB300]/15')) return dark;
+                    return (dark || light)
+                        // Заливки главных кнопок и бейджей -> фирменный красный с белым текстом
+                        .replace(/bg-\[#FFB300\] text-black/g, 'bg-[#C62828] text-white')
+                        .replace(/bg-\[#FFB300\]\/20/g, 'bg-[#C62828]/25')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828]')
+                        .replace(/hover:bg-\[#FFA000\]/g, 'hover:bg-[#B71C1C]')
+                        // Акцентный текст (заголовки, активные вкладки, артикулы) -> светлый рубиново-коралловый для высокой контрастности на темном фоне
+                        .replace(/text-\[#FFB300\]/g, 'text-[#FF5252]')
+                        // Рамки и кольца фокуса -> рубиновые
+                        .replace(/border-\[#FFB300\]\/50/g, 'border-[#EF4444]/50')
+                        .replace(/border-\[#FFB300\]\/30/g, 'border-[#EF4444]/30')
+                        .replace(/border-\[#FFB300\]/g, 'border-[#C62828]')
+                        .replace(/focus:ring-\[#FFB300\]/g, 'focus:ring-[#EF4444]')
+                        .replace(/shadow-\[#FFB300\]\/\d+/g, 'shadow-[#C62828]/30');
+                }
+                if (theme === 'marine') {
+                    return (marine || dark)
+                        .replace(/bg-blue-50\/50/g, 'bg-[#131D31]')
+                        .replace(/bg-blue-50/g, 'bg-[#0B132B]')
+                        .replace(/bg-blue-100/g, 'bg-[#162238]')
+                        .replace(/bg-blue-200/g, 'bg-[#1E3A5F]')
+                        .replace(/bg-white/g, 'bg-[#162032] text-blue-50')
+                        .replace(/text-blue-950/g, 'text-blue-50')
+                        .replace(/text-blue-900\/60/g, 'text-blue-300/50')
+                        .replace(/text-blue-900/g, 'text-blue-100')
+                        .replace(/text-blue-800/g, 'text-blue-200')
+                        .replace(/text-blue-700/g, 'text-sky-400')
+                        .replace(/text-blue-600/g, 'text-sky-400')
+                        .replace(/border-blue-200/g, 'border-[#253652]')
+                        .replace(/border-blue-300/g, 'border-sky-500/50');
+                }
+                if (theme === 'coffee') {
+                    return (coffee || dark)
+                        .replace(/bg-\[#F5F2EE\]/g, 'bg-[#16110F]')
+                        .replace(/bg-\[#EFEBE9\]/g, 'bg-[#221A17]')
+                        .replace(/bg-\[#FDFBF7\]/g, 'bg-[#241C19] text-[#F5EBE6]')
+                        .replace(/bg-\[#D7CCC8\]\/60/g, 'bg-[#362924]')
+                        .replace(/bg-\[#D7CCC8\]\/40/g, 'bg-[#362924]')
+                        .replace(/bg-\[#D7CCC8\]/g, 'bg-[#382B26]')
+                        .replace(/bg-white/g, 'bg-[#241C19] text-[#F5EBE6]')
+                        .replace(/text-\[#3E2723\]/g, 'text-[#F5EBE6]')
+                        .replace(/text-\[#4E342E\]/g, 'text-[#E6D5CC]')
+                        .replace(/text-\[#5D4037\]/g, 'text-[#D7B399]')
+                        .replace(/text-\[#6D4C41\]\/60/g, 'text-[#A1887F]/60')
+                        .replace(/text-\[#6D4C41\]/g, 'text-[#E0B084]')
+                        .replace(/text-\[#8D6E63\]/g, 'text-[#D7B399]')
+                        .replace(/border-\[#D7CCC8\]/g, 'border-[#3E2F2A]')
+                        .replace(/border-\[#A1887F\]/g, 'border-[#6D4C41]');
+                }
                 if (theme === 'mint') return mint;
-                if (theme === 'marine') return marine;
                 if (theme === 'pink') return pink;
                 if (theme === 'light') return light;
                 return dark;
@@ -788,12 +989,12 @@
             };
 
             useEffect(() => {
-                document.body.style.backgroundColor = t('#101112', '#F0F2F5', '#fdf2f8', '#f0f9ff', '#f0fdf4', '#F5F2EE', '#F4F5F7');
-                document.body.style.color = t('#F3F4F6', '#111827', '#831843', '#0c4a6e', '#14532d', '#3E2723', '#111827');
+                document.body.style.backgroundColor = (theme === 'expert-dark') ? '#101112' : t('#101112', '#F0F2F5', '#fdf2f8', '#0B132B', '#f0fdf4', '#16110F', '#F4F5F7');
+                document.body.style.color = (theme === 'expert-dark') ? '#F3F4F6' : t('#F3F4F6', '#111827', '#831843', '#F0F9FF', '#14532d', '#F5EBE6', '#111827');
             }, [theme]);
 
             return (
-                <div className={`fixed inset-0 flex flex-col w-full overflow-hidden transition-colors duration-200 ${t('bg-[#101112] text-gray-100', 'bg-[#F0F2F5] text-gray-900', 'bg-pink-50 text-pink-950', 'bg-blue-50 text-blue-950', 'bg-emerald-50 text-emerald-950', 'bg-[#F5F2EE] text-[#3E2723]')}`}>
+                <div className={`fixed inset-0 flex flex-col w-full overflow-hidden transition-colors duration-200 ${(theme === 'expert-dark' || theme === 'dark') ? 'bg-[#101112] text-gray-100' : t('bg-[#101112] text-gray-100', 'bg-[#F0F2F5] text-gray-900', 'bg-pink-50 text-pink-950', 'bg-[#0B132B] text-blue-50', 'bg-emerald-50 text-emerald-950', 'bg-[#16110F] text-[#F5EBE6]', 'bg-[#F4F5F7] text-gray-900')}`}>
                     
                     {toastMessage && (
                         <div className={`fixed top-1.5 sm:top-2 left-1/2 transform -translate-x-1/2 z-[60] px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg border-2 shadow-xl font-mono text-[11px] sm:text-xs font-black tracking-wide text-center max-w-[92vw] sm:max-w-md md:max-w-lg truncate pointer-events-none transition-all ${t(
@@ -809,11 +1010,18 @@
                         </div>
                     )}
 
-                    <header className={`flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-sm z-10 ${t('bg-[#282B30]', 'bg-white', 'bg-pink-100', 'bg-blue-100', 'bg-emerald-100', 'bg-[#EFEBE9]', 'bg-gradient-to-r from-[#5A1017] via-[#75161F] to-[#5A1017] border-[#9EA4B0]/40 text-white shadow-lg')}`}>
+                    <header className={`flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-lg border-b z-10 text-white ${(theme === 'expert' || theme === 'expert-dark') ? 'bg-gradient-to-r from-[#4A0B11] via-[#75161F] to-[#4A0B11] border-b border-[#C62828]/50 text-white shadow-lg' : t(
+                        'bg-gradient-to-r from-[#1A1D21] via-[#282B30] to-[#1A1D21] border-[#FFB300]/50',
+                        'bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 border-amber-800',
+                        'bg-gradient-to-r from-pink-700 via-pink-600 to-pink-700 border-pink-800',
+                        'bg-gradient-to-r from-[#0F2547] via-[#1D4ED8] to-[#0F2547] border-blue-400/30',
+                        'bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-800 border-emerald-900',
+                        'bg-gradient-to-r from-[#3E2723] via-[#5D4037] to-[#3E2723] border-[#8D6E63]/40'
+                    )}`}>
                         <div className="flex items-center space-x-3">
                             <div className="flex flex-col">
                                 <div className="flex items-center space-x-2">
-                                    <span className={`text-[11px] font-extrabold tracking-wider font-mono opacity-70 ${t('', '', 'text-pink-800', 'text-blue-900', 'text-emerald-900', 'text-[#5D4037]')}`}>{dateStr}</span>
+                                    <span className="text-[11px] font-extrabold tracking-wider font-mono text-white/85">{dateStr}</span>
                                     {isEditMode && (
                                         <button 
                                             onClick={() => setIsEditMode(false)}
@@ -825,20 +1033,29 @@
                                         </button>
                                     )}
                                 </div>
-                                <span className={`text-[15px] font-black tracking-widest font-mono ${t('', '', 'text-pink-900', 'text-blue-950', 'text-emerald-950', 'text-[#3E2723]')}`}>{timeStr}</span>
+                                <span className="text-[15px] font-black tracking-widest font-mono text-white">{timeStr}</span>
                             </div>
                         </div>
                         <div className="flex items-center space-x-1">
-                            <button className={`p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowCallModal(true)}>
-                                <Icon name="phone" />
+                            <button
+                                className="p-2 rounded-full text-white hover:bg-white/15 active:scale-95 transition-all"
+                                onClick={() => setShowCallModal(true)}
+                            >
+                                <Icon name="phone" className="text-white" strokeWidth={2.2} />
                             </button>
-                            <button className={`p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowSettings(true)}>
-                                <Icon name="settings" />
+                            <button
+                                className="p-2 rounded-full text-white hover:bg-white/15 active:scale-95 transition-all"
+                                onClick={() => setShowSettings(true)}
+                            >
+                                <Icon name="settings" className="text-white" strokeWidth={2.2} />
                             </button>
-                            <button className={`relative p-2 rounded-full ${t('text-[#FFB300]', 'text-amber-600', 'text-pink-500', 'text-blue-600', 'text-emerald-600', 'text-[#8D6E63]', 'text-white hover:bg-white/10')}`} onClick={() => setShowCart(true)}>
-                                <Icon name="shopping-cart" />
+                            <button
+                                className="relative p-2 rounded-full text-white hover:bg-white/15 active:scale-95 transition-all"
+                                onClick={() => setShowCart(true)}
+                            >
+                                <Icon name="shopping-cart" className="text-white" strokeWidth={2.2} />
                                 {totalCartUnits > 0 && (
-                                    <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded">
+                                    <span className="absolute top-0.5 right-0.5 bg-red-500 border border-white text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow">
                                         {totalCartUnits}
                                     </span>
                                 )}
@@ -1325,12 +1542,12 @@
                                 <div className={`p-3 rounded border flex justify-between items-center mb-3 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-300', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
                                     <span className="text-xs font-bold">Тема оформления</span>
                                     <button onClick={() => {
-                                        const themes = ['expert', 'dark', 'light', 'pink', 'marine', 'mint', 'coffee'];
+                                        const themes = ['expert', 'expert-dark', 'dark', 'light', 'marine', 'coffee', 'pink', 'mint'];
                                         const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
                                         setTheme(themes[nextIdx]);
-                                    }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${theme === 'expert' ? 'bg-[#D32F2F] text-white' : t('bg-[#FFB300] text-black', 'bg-black text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white')}`}>
+                                    }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${theme === 'expert' ? 'bg-[#D32F2F] text-white' : theme === 'expert-dark' ? 'bg-[#75161F] text-white border border-[#FF5252]/40' : t('bg-[#FFB300] text-black', 'bg-black text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white')}`}>
                                         <Icon name="palette" size={14} className="mr-1.5" />
-                                        {theme === 'expert' ? 'ЭКСПЕРТ' : theme === 'dark' ? 'ТЕМНАЯ' : theme === 'light' ? 'СВЕТЛАЯ' : theme === 'pink' ? 'РОЗОВАЯ' : theme === 'marine' ? 'МОРСКАЯ' : theme === 'mint' ? 'МЯТНАЯ' : 'КОФЕЙНАЯ'}
+                                        {theme === 'expert' ? 'ЭКСПЕРТ' : theme === 'expert-dark' ? 'ЭКСПЕРТ НОЧЬ' : theme === 'dark' ? 'ТЕМНАЯ' : theme === 'light' ? 'СВЕТЛАЯ' : theme === 'marine' ? 'МОРСКАЯ' : theme === 'coffee' ? 'КОФЕЙНАЯ' : theme === 'pink' ? 'РОЗОВАЯ' : 'МЯТНАЯ'}
                                     </button>
                                 </div>
 
@@ -1421,7 +1638,14 @@
                                         <input type="text" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.name} onChange={e => setUserProfile({...userProfile, name: e.target.value})} placeholder="Иванов Иван" />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold mb-1 block opacity-70">Номер телефона:</label>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold block opacity-70">Номер телефона:</label>
+                                            {isSyncing ? (
+                                                <span className="text-[11px] font-bold text-amber-500 animate-pulse">☁️ Проверка в базе...</span>
+                                            ) : normalizePhone(userProfile.phone).length === 11 ? (
+                                                <span className="text-[11px] font-bold text-emerald-500">☁️ Синхронизировано</span>
+                                            ) : null}
+                                        </div>
                                         <input type="tel" className={`w-full p-2 text-[16px] sm:text-sm rounded border transition-colors ${t('bg-[#1E2125] border-gray-700 text-white', 'bg-white border-gray-300', 'bg-pink-50 border-pink-200 text-pink-900', 'bg-blue-50 border-blue-200 text-blue-900', 'bg-emerald-50 border-emerald-200 text-emerald-950', 'bg-white border-[#D7CCC8] text-[#3E2723]')}`} value={userProfile.phone} onChange={e => setUserProfile({...userProfile, phone: e.target.value})} placeholder="+7 (999) 000-00-00" />
                                     </div>
                                     <div>
@@ -1431,7 +1655,16 @@
                                 </div>
 
                                 <div className="flex justify-end">
-                                    <button onClick={() => { showToast('Данные аккаунта сохранены'); setShowProfile(false); }} className={`px-5 py-3 w-full text-sm font-black tracking-widest rounded ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}>СОХРАНИТЬ ДАННЫЕ</button>
+                                    <button 
+                                        onClick={() => { 
+                                            syncToCloud(null, false);
+                                            setShowProfile(false); 
+                                        }} 
+                                        disabled={isSyncing}
+                                        className={`px-5 py-3 w-full text-sm font-black tracking-widest rounded flex items-center justify-center transition-all ${isSyncing ? 'opacity-70 cursor-not-allowed' : ''} ${t('bg-[#FFB300] text-black', 'bg-amber-600 text-white shadow-amber-600/30', 'bg-pink-500 text-white shadow-pink-500/30', 'bg-blue-600 text-white shadow-blue-600/30', 'bg-emerald-600 text-white shadow-emerald-600/30', 'bg-[#6D4C41] text-white shadow-[#6D4C41]/30', 'bg-[#C62828] text-white shadow-[#C62828]/30 hover:bg-[#B71C1C]')}`}
+                                    >
+                                        {isSyncing ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ ДАННЫЕ'}
+                                    </button>
                                 </div>
                             </div>
                         </div>

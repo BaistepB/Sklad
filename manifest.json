@@ -1,6 +1,6 @@
 {
-  "name": "Складской учет оборудования",
-  "short_name": "Склад Эксперт",
+  "name": "Заявка на склад",
+  "short_name": "Заявка на склад",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#101112",
