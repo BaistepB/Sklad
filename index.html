@@ -74,6 +74,21 @@
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
+
+        @keyframes snowfall {
+            0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0.9; }
+            50% { transform: translateY(50vh) translateX(15px) rotate(180deg); opacity: 0.6; }
+            100% { transform: translateY(105vh) translateX(-15px) rotate(360deg); opacity: 0.1; }
+        }
+        .snowflake {
+            position: fixed;
+            top: -5vh;
+            color: #ffffff;
+            pointer-events: none;
+            z-index: 45;
+            user-select: none;
+            animation: snowfall linear infinite;
+        }
     </style>
 </head>
 <body class="bg-[#F0F2F5] dark:bg-[#101112] text-gray-900 dark:text-gray-100 transition-colors duration-200">
@@ -298,6 +313,32 @@
 
         const EditItemModal = ({ editingItem, theme, manufacturers, onSave, onClose }) => {
             const t = (dark, light, pink, marine, mint, coffee, expert) => {
+                if (theme === 'newyear') {
+                    return (dark || light)
+                        // Фоны экрана, карточек и полей ввода -> глубокий хвойно-изумрудный стиль
+                        .replace(/bg-\[#101112\]/g, 'bg-[#0A1912]')
+                        .replace(/bg-\[#282B30\]/g, 'bg-[#11261D]')
+                        .replace(/bg-\[#1E2125\]/g, 'bg-[#0D1F17]')
+                        .replace(/hover:bg-\[#33363B\]/g, 'hover:bg-[#19382B]')
+                        // Рамки карточек и разделители -> хвойно-золотистые
+                        .replace(/border-\[#3A3D42\]/g, 'border-[#1E3F30]')
+                        .replace(/border-gray-800/g, 'border-[#1A382A]')
+                        .replace(/border-gray-700/g, 'border-[#234736]')
+                        .replace(/border-\[#444\]/g, 'border-[#234736]')
+                        // Главные акцентные кнопки -> праздничный рубиново-красный с золотистой тенью
+                        .replace(/bg-\[#FFB300\] text-black/g, 'bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] text-white border border-[#FBBF24]/40')
+                        .replace(/hover:bg-\[#FFA000\]/g, 'hover:from-[#9A1B24] hover:to-[#B71C1C]')
+                        .replace(/bg-\[#FFB300\]\/20/g, 'bg-[#FBBF24]/20')
+                        .replace(/bg-\[#FFB300\]\/15/g, 'bg-[#FBBF24]/15')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828] text-white')
+                        // Акцентный текст (артикулы, активные табы, заголовки) -> искристое золото
+                        .replace(/text-\[#FFB300\]/g, 'text-[#FBBF24]')
+                        // Золотые рамки и кольца фокуса
+                        .replace(/border-\[#FFB300\]\/50/g, 'border-[#FBBF24]/50')
+                        .replace(/border-\[#FFB300\]/g, 'border-[#FBBF24]')
+                        .replace(/focus:ring-\[#FFB300\]/g, 'focus:ring-[#FBBF24]')
+                        .replace(/shadow-\[#FFB300\]\/\d+/g, 'shadow-[#C62828]/40');
+                }
                 if (theme === 'expert') {
                     if (expert) return expert;
                     return (light || dark)
@@ -839,6 +880,32 @@
             };
 
             const t = (dark, light, pink, marine, mint, coffee, expert) => {
+                if (theme === 'newyear') {
+                    return (dark || light)
+                        // Фоны экрана, карточек и полей ввода -> глубокий хвойно-изумрудный стиль
+                        .replace(/bg-\[#101112\]/g, 'bg-[#0A1912]')
+                        .replace(/bg-\[#282B30\]/g, 'bg-[#11261D]')
+                        .replace(/bg-\[#1E2125\]/g, 'bg-[#0D1F17]')
+                        .replace(/hover:bg-\[#33363B\]/g, 'hover:bg-[#19382B]')
+                        // Рамки карточек и разделители -> хвойно-золотистые
+                        .replace(/border-\[#3A3D42\]/g, 'border-[#1E3F30]')
+                        .replace(/border-gray-800/g, 'border-[#1A382A]')
+                        .replace(/border-gray-700/g, 'border-[#234736]')
+                        .replace(/border-\[#444\]/g, 'border-[#234736]')
+                        // Главные акцентные кнопки -> праздничный рубиново-красный с золотистой тенью
+                        .replace(/bg-\[#FFB300\] text-black/g, 'bg-gradient-to-r from-[#B71C1C] to-[#D32F2F] text-white border border-[#FBBF24]/40')
+                        .replace(/hover:bg-\[#FFA000\]/g, 'hover:from-[#9A1B24] hover:to-[#B71C1C]')
+                        .replace(/bg-\[#FFB300\]\/20/g, 'bg-[#FBBF24]/20')
+                        .replace(/bg-\[#FFB300\]\/15/g, 'bg-[#FBBF24]/15')
+                        .replace(/bg-\[#FFB300\]/g, 'bg-[#C62828] text-white')
+                        // Акцентный текст (артикулы, активные табы, заголовки) -> искристое золото
+                        .replace(/text-\[#FFB300\]/g, 'text-[#FBBF24]')
+                        // Золотые рамки и кольца фокуса
+                        .replace(/border-\[#FFB300\]\/50/g, 'border-[#FBBF24]/50')
+                        .replace(/border-\[#FFB300\]/g, 'border-[#FBBF24]')
+                        .replace(/focus:ring-\[#FFB300\]/g, 'focus:ring-[#FBBF24]')
+                        .replace(/shadow-\[#FFB300\]\/\d+/g, 'shadow-[#C62828]/40');
+                }
                 if (theme === 'expert') {
                     if (expert) return expert;
                     return (light || dark)
@@ -1060,13 +1127,37 @@
             };
 
             useEffect(() => {
-                document.body.style.backgroundColor = (theme === 'expert-dark') ? '#101112' : t('#101112', '#F0F2F5', '#fdf2f8', '#0B132B', '#f0fdf4', '#16110F', '#F4F5F7');
-                document.body.style.color = (theme === 'expert-dark') ? '#F3F4F6' : t('#F3F4F6', '#111827', '#831843', '#F0F9FF', '#14532d', '#F5EBE6', '#111827');
+                document.body.style.backgroundColor = theme === 'newyear' ? '#0A1912' : theme === 'expert-dark' ? '#101112' : t('#101112', '#F0F2F5', '#fdf2f8', '#0B132B', '#f0fdf4', '#16110F', '#F4F5F7');
+                document.body.style.color = (theme === 'newyear' || theme === 'expert-dark') ? '#F3F4F6' : t('#F3F4F6', '#111827', '#831843', '#F0F9FF', '#14532d', '#F5EBE6', '#111827');
             }, [theme]);
 
             return (
-                <div className={`fixed inset-0 flex flex-col w-full overflow-hidden transition-colors duration-200 ${(theme === 'expert-dark' || theme === 'dark') ? 'bg-[#101112] text-gray-100' : t('bg-[#101112] text-gray-100', 'bg-[#F0F2F5] text-gray-900', 'bg-pink-50 text-pink-950', 'bg-[#0B132B] text-blue-50', 'bg-emerald-50 text-emerald-950', 'bg-[#16110F] text-[#F5EBE6]', 'bg-[#F4F5F7] text-gray-900')}`}>
+                <div className={`fixed inset-0 flex flex-col w-full overflow-hidden transition-colors duration-200 ${(theme === 'expert-dark' || theme === 'dark') ? 'bg-[#101112] text-gray-100' : theme === 'newyear' ? 'bg-[#0A1912] text-gray-100' : t('bg-[#101112] text-gray-100', 'bg-[#F0F2F5] text-gray-900', 'bg-pink-50 text-pink-950', 'bg-[#0B132B] text-blue-50', 'bg-emerald-50 text-emerald-950', 'bg-[#16110F] text-[#F5EBE6]', 'bg-[#F4F5F7] text-gray-900')}`}>
                     
+                    {theme === 'newyear' && (
+                        <div className="fixed inset-0 pointer-events-none overflow-hidden z-40">
+                            {[
+                                { left: '5%', dur: '9s', delay: '0s', size: '12px' },
+                                { left: '15%', dur: '12s', delay: '2s', size: '16px' },
+                                { left: '25%', dur: '10s', delay: '4s', size: '10px' },
+                                { left: '35%', dur: '14s', delay: '1s', size: '14px' },
+                                { left: '48%', dur: '11s', delay: '3s', size: '12px' },
+                                { left: '60%', dur: '13s', delay: '5s', size: '15px' },
+                                { left: '72%', dur: '9.5s', delay: '1.5s', size: '11px' },
+                                { left: '83%', dur: '12.5s', delay: '3.5s', size: '16px' },
+                                { left: '92%', dur: '10.5s', delay: '0.5s', size: '13px' }
+                            ].map((s, idx) => (
+                                <span 
+                                    key={idx} 
+                                    className="snowflake" 
+                                    style={{ left: s.left, animationDuration: s.dur, animationDelay: s.delay, fontSize: s.size }}
+                                >
+                                    ❄
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
                     {toastMessage && (
                         <div className={`fixed top-1.5 sm:top-2 left-1/2 transform -translate-x-1/2 z-[60] px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg border-2 shadow-xl font-mono text-[11px] sm:text-xs font-black tracking-wide text-center max-w-[92vw] sm:max-w-md md:max-w-lg truncate pointer-events-none transition-all ${t(
                             'bg-[#282B30] border-[#FFB300] text-[#FFB300]',
@@ -1081,14 +1172,20 @@
                         </div>
                     )}
 
-                    <header className={`flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-lg border-b z-10 text-white ${(theme === 'expert' || theme === 'expert-dark') ? 'bg-gradient-to-r from-[#4A0B11] via-[#75161F] to-[#4A0B11] border-b border-[#C62828]/50 text-white shadow-lg' : t(
-                        'bg-gradient-to-r from-[#1A1D21] via-[#282B30] to-[#1A1D21] border-[#FFB300]/50',
-                        'bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 border-amber-800',
-                        'bg-gradient-to-r from-pink-700 via-pink-600 to-pink-700 border-pink-800',
-                        'bg-gradient-to-r from-[#0F2547] via-[#1D4ED8] to-[#0F2547] border-blue-400/30',
-                        'bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-800 border-emerald-900',
-                        'bg-gradient-to-r from-[#3E2723] via-[#5D4037] to-[#3E2723] border-[#8D6E63]/40'
-                    )}`}>
+                    <header className={`flex-shrink-0 px-4 py-3 flex items-center justify-between shadow-lg border-b z-10 text-white ${
+                        theme === 'newyear' 
+                            ? 'bg-gradient-to-r from-[#0F291E] via-[#7F1D1D] to-[#0F291E] border-[#FBBF24]/60'
+                            : (theme === 'expert' || theme === 'expert-dark') 
+                                ? 'bg-gradient-to-r from-[#4A0B11] via-[#75161F] to-[#4A0B11] border-b border-[#C62828]/50 text-white shadow-lg' 
+                                : t(
+                                    'bg-gradient-to-r from-[#1A1D21] via-[#282B30] to-[#1A1D21] border-[#FFB300]/50',
+                                    'bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 border-amber-800',
+                                    'bg-gradient-to-r from-pink-700 via-pink-600 to-pink-700 border-pink-800',
+                                    'bg-gradient-to-r from-[#0F2547] via-[#1D4ED8] to-[#0F2547] border-blue-400/30',
+                                    'bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-800 border-emerald-900',
+                                    'bg-gradient-to-r from-[#3E2723] via-[#5D4037] to-[#3E2723] border-[#8D6E63]/40'
+                                )
+                    }`}>
                         <div className="flex items-center space-x-3">
                             <div className="flex flex-col">
                                 <div className="flex items-center space-x-2">
@@ -1104,7 +1201,11 @@
                                         </button>
                                     )}
                                 </div>
-                                <span className="text-[15px] font-black tracking-widest font-mono text-white">{timeStr}</span>
+                                <span className="text-[15px] font-black tracking-widest font-mono text-white flex items-center">
+                                    {theme === 'newyear' && <span className="mr-1.5 text-sm animate-pulse">🎄</span>}
+                                    {timeStr}
+                                    {theme === 'newyear' && <span className="ml-1.5 text-xs text-[#FBBF24]">✨</span>}
+                                </span>
                             </div>
                         </div>
                         <div className="flex items-center space-x-1">
@@ -1613,12 +1714,12 @@
                                 <div className={`p-3 rounded border flex justify-between items-center mb-3 ${t('bg-[#1E2125] border-gray-700', 'bg-gray-50 border-gray-300', 'bg-pink-100 border-pink-200', 'bg-blue-100 border-blue-200', 'bg-emerald-100 border-emerald-200', 'bg-[#EFEBE9] border-[#D7CCC8]')}`}>
                                     <span className="text-xs font-bold">Тема оформления</span>
                                     <button onClick={() => {
-                                        const themes = ['expert', 'expert-dark', 'dark', 'light', 'marine', 'coffee', 'pink', 'mint'];
+                                        const themes = ['expert', 'expert-dark', 'newyear', 'dark', 'light', 'marine', 'coffee', 'pink', 'mint'];
                                         const nextIdx = (themes.indexOf(theme) + 1) % themes.length;
                                         setTheme(themes[nextIdx]);
-                                    }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${theme === 'expert' ? 'bg-[#D32F2F] text-white' : theme === 'expert-dark' ? 'bg-[#75161F] text-white border border-[#FF5252]/40' : t('bg-[#FFB300] text-black', 'bg-black text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white')}`}>
+                                    }} className={`px-3 py-1.5 rounded text-[11px] font-black flex items-center ${theme === 'expert' ? 'bg-[#D32F2F] text-white' : theme === 'expert-dark' ? 'bg-[#75161F] text-white border border-[#FF5252]/40' : theme === 'newyear' ? 'bg-gradient-to-r from-[#0F291E] to-[#991B1B] text-[#FBBF24] border border-[#FBBF24]/50' : t('bg-[#FFB300] text-black', 'bg-black text-white', 'bg-pink-500 text-white', 'bg-blue-600 text-white', 'bg-emerald-600 text-white', 'bg-[#6D4C41] text-white')}`}>
                                         <Icon name="palette" size={14} className="mr-1.5" />
-                                        {theme === 'expert' ? 'ЭКСПЕРТ' : theme === 'expert-dark' ? 'ЭКСПЕРТ НОЧЬ' : theme === 'dark' ? 'ТЕМНАЯ' : theme === 'light' ? 'СВЕТЛАЯ' : theme === 'marine' ? 'МОРСКАЯ' : theme === 'coffee' ? 'КОФЕЙНАЯ' : theme === 'pink' ? 'РОЗОВАЯ' : 'МЯТНАЯ'}
+                                        {theme === 'expert' ? 'ЭКСПЕРТ' : theme === 'expert-dark' ? 'ЭКСПЕРТ НОЧЬ' : theme === 'newyear' ? '🎄 НОВОГОДНЯЯ' : theme === 'dark' ? 'ТЕМНАЯ' : theme === 'light' ? 'СВЕТЛАЯ' : theme === 'marine' ? 'МОРСКАЯ' : theme === 'coffee' ? 'КОФЕЙНАЯ' : theme === 'pink' ? 'РОЗОВАЯ' : 'МЯТНАЯ'}
                                     </button>
                                 </div>
 
